@@ -1,0 +1,87 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "points-air-api"
+dynamic = ["version"]
+description = 'API pour Points-Air'
+readme = "README.md"
+requires-python = ">=3.8"
+license = "Proprietary"
+keywords = []
+authors = [
+  { name = "David Huggins-Daines", email = "dhd@ecolingui.ca" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+  "overpy",
+  "fastapi",
+  "uvicorn[standard]",
+  "python-dotenv",
+]
+
+[project.urls]
+Documentation = "https://github.com/insolites/points-air-api#readme"
+Issues = "https://github.com/insolites/points-air-api/issues"
+Source = "https://github.com/insolites/points-air-api"
+
+[tool.hatch.version]
+path = "points_air/__about__.py"
+
+[tool.hatch.envs.default]
+dependencies = [
+  "coverage[toml]>=6.5",
+  "pytest",
+]
+[tool.hatch.envs.default.scripts]
+test = "pytest {args:tests}"
+test-cov = "coverage run -m pytest {args:tests}"
+cov-report = [
+  "- coverage combine",
+  "coverage report",
+]
+cov = [
+  "test-cov",
+  "cov-report",
+]
+dev = "DEVELOPMENT=True uvicorn points_air:app --reload"
+
+[[tool.hatch.envs.all.matrix]]
+python = ["3.8", "3.9", "3.10", "3.11", "3.12"]
+
+[tool.hatch.envs.types]
+dependencies = [
+  "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/points_air tests}"
+
+[tool.coverage.run]
+source_pkgs = ["points_air", "tests"]
+branch = true
+parallel = true
+omit = [
+  "points_air/__about__.py",
+]
+
+[tool.coverage.paths]
+points_air_api = ["points_air", "*/points-air-api/src/points_air"]
+tests = ["tests", "*/points-air-api/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
