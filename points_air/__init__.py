@@ -5,23 +5,20 @@ import dotenv
 import logging
 
 LOGGER = logging.getLogger("points-air-api")
+logging.basicConfig(level=logging.INFO)
 dotenv.load_dotenv()
 app = FastAPI()
 middleware_args: dict[str, str | list[str]]
 if os.getenv("DEVELOPMENT", False):
-    LOGGER.info(
-        "Running in development mode, will allow requests from http://localhost:*"
-    )
-    # Allow requests from localhost dev servers
+    LOGGER.info("En mode développement, requêtes seront acceptés de http://localhost:*")
     middleware_args = dict(
         allow_origin_regex="http://localhost(:.*)?",
     )
 else:
-    # Allow requests from application
+    origin = os.getenv("ORIGIN", "https://points-air.ecolingui.ca")
+    LOGGER.info("Requêtes seront acceptés de %s", origin)
     middleware_args = dict(
-        allow_origins=[
-            os.getenv("ORIGIN", "https://points-air.ecolingui.ca"),
-        ],
+        allow_origins=[origin],
     )
 app.add_middleware(CORSMiddleware, allow_methods=["GET", "OPTIONS"], **middleware_args)
 
