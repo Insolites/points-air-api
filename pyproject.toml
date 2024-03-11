@@ -36,13 +36,20 @@ Documentation = "https://github.com/insolites/points-air-api#readme"
 Issues = "https://github.com/insolites/points-air-api/issues"
 Source = "https://github.com/insolites/points-air-api"
 
+[project.scripts]
+points_air_api = "points_air:main"
+
 [tool.hatch.version]
 path = "points_air/__about__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["points_air"]
 
 [tool.hatch.envs.default]
 dependencies = [
   "coverage[toml]>=6.5",
   "pytest",
+  "httpx",
 ]
 [tool.hatch.envs.default.scripts]
 test = "pytest {args:tests}"
@@ -55,7 +62,7 @@ cov = [
   "test-cov",
   "cov-report",
 ]
-dev = "DEVELOPMENT=True uvicorn points_air:app --reload"
+dev = "DEVELOPMENT=True uvicorn points_air:app --port 8092 --reload"
 
 [[tool.hatch.envs.all.matrix]]
 python = ["3.8", "3.9", "3.10", "3.11", "3.12"]
@@ -65,10 +72,10 @@ dependencies = [
   "mypy>=1.0.0",
 ]
 [tool.hatch.envs.types.scripts]
-check = "mypy --install-types --non-interactive {args:src/points_air tests}"
+check = "mypy --install-types --non-interactive {args:points_air tests}"
 
 [tool.coverage.run]
-source_pkgs = ["points_air", "tests"]
+source_pkgs = ["points_air"]
 branch = true
 parallel = true
 omit = [
@@ -76,12 +83,16 @@ omit = [
 ]
 
 [tool.coverage.paths]
-points_air_api = ["points_air", "*/points-air-api/src/points_air"]
-tests = ["tests", "*/points-air-api/tests"]
+points_air_api = ["points_air", "*/points-air-api/points_air"]
 
 [tool.coverage.report]
 exclude_lines = [
   "no cov",
   "if __name__ == .__main__.:",
   "if TYPE_CHECKING:",
+]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::DeprecationWarning",  # STFU
 ]

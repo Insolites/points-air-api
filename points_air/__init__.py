@@ -1,28 +1,14 @@
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-import os
 import dotenv
 import logging
+import uvicorn
 
-LOGGER = logging.getLogger("points-air-api")
-logging.basicConfig(level=logging.INFO)
-dotenv.load_dotenv()
-app = FastAPI()
-middleware_args: dict[str, str | list[str]]
-if os.getenv("DEVELOPMENT", False):
-    LOGGER.info("En mode développement, requêtes seront acceptés de http://localhost:*")
-    middleware_args = dict(
-        allow_origin_regex="http://localhost(:.*)?",
-    )
-else:
-    origin = os.getenv("ORIGIN", "https://points-air.ecolingui.ca")
-    LOGGER.info("Requêtes seront acceptés de %s", origin)
-    middleware_args = dict(
-        allow_origins=[origin],
-    )
-app.add_middleware(CORSMiddleware, allow_methods=["GET", "OPTIONS"], **middleware_args)
+from .api import app
 
 
-@app.get("/")
-def home_page(request: Request):
-    return "Bonjour!"
+def main():
+    """Fonction principale"""
+    uvicorn.run(app, port=8092)
+
+
+if __name__ == '__main__':
+    main()
