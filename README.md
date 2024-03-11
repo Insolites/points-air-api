@@ -20,8 +20,7 @@ Dans l'API, tout le monde est capable de lire des informations et des
 statistiques.  Pour ajouter des observations d'EEE, il faut
 s'authentifier avec un compte d'utilisateur.
 
-FIXME: avoir des mots de passe / noms ou simplement OAuth2? (plus
-difficile d'implementation mais plus facile d'utilisation)
+FIXME: authentification à déterminer (de préférence passwordless)
 
 Les scores et les activités sont regroupés par ville.  Pour le moment
 la sélection de villes est limité à celles-ci:
