@@ -48,7 +48,7 @@ Les informations et fonctions disponibles sont:
 
 ## Activités
 
-Les villes sont cotées selon les activités confirmé sur leur
+Les villes sont cotées selon les activités confirmées sur leur
 territoire, et ce, peu importe le lieu de résidence de l'utilisateur.
 Nous voulons non seulement encourager une mode de vie active chez les
 citoyens mais aussi l'aménagement d'infrastructures chez les villes.
