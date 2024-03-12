@@ -9,7 +9,7 @@ import asyncio
 import json
 import urllib
 
-from shapely import Point
+from shapely import Point, prepare
 from shapely.geometry import shape
 from pathlib import Path
 from pydantic import BaseModel
@@ -33,6 +33,7 @@ try:
         feats = json.load(infh)
     for v, f in feats.items():
         VILLEGONS[v] = shape(f["geometry"])
+        prepare(VILLEGONS[v])
 except json.JSONDecodeError:  # Si on reconstruit le JSON..
     pass
 
