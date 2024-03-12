@@ -39,6 +39,7 @@ Source = "https://github.com/insolites/points-air-api"
 [project.scripts]
 points_air_api = "points_air:main"
 points_air_villes = "points_air.villes:main"
+points_air_plateaux = "points_air.plateaux:main"
 
 [tool.hatch.version]
 path = "points_air/__about__.py"

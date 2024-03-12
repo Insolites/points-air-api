@@ -35,6 +35,21 @@ except json.JSONDecodeError:  # Si on reconstruit le JSON..
     pass
 
 
+class Ville(BaseModel):
+    """
+    Une ville de compétition.
+    """
+    nom: str
+
+    @classmethod
+    def from_wgs84(self, latitude: float, longitude: float) -> Optional["Ville"]:
+        p = Point(longitude, latitude)
+        for v, g in VILLEGONS.items():
+            if g.contains(p):
+                return Ville(nom=v)
+        return None
+
+
 def icherche_url(ville: str) -> str:
     """Construire le URL pour chercher une ville dans iCherche"""
     params = urllib.parse.urlencode(
@@ -54,21 +69,6 @@ async def ville_json(name: str) -> Optional[dict]:
     if r.status_code != 200:
         return None
     return r.json()
-
-
-class Ville(BaseModel):
-    """
-    Une ville de compétition.
-    """
-    nom: str
-
-    @classmethod
-    def from_wgs84(self, latitude: float, longitude: float) -> Optional["Ville"]:
-        p = Point(longitude, latitude)
-        for v, g in VILLEGONS.items():
-            if g.contains(p):
-                return Ville(nom=v)
-        return None
 
 
 async def async_main(args: argparse.Namespace):

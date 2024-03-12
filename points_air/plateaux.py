@@ -5,9 +5,18 @@ que pour localiser les activitées à proximité d'un emplacement ou une
 ville.
 """
 
-from pydantic import BaseModel
-from typing import Literal, List
+import argparse
+import asyncio
+import logging
+import urllib
+from typing import Dict, List, Literal, Optional
 
+from pydantic import BaseModel
+
+from .villes import CLIENT, VILLES
+
+LOGGER = logging.getLogger("points-air-plateaux")
+DQURL = "https://www.donneesquebec.ca/recherche/api/3/action"
 Saison = Literal["Hiver", "TroisSaisons", "QuatreSaisons"]
 
 
@@ -15,19 +24,78 @@ class Plateau(BaseModel):
     """
     Plateau d'activité physique pour participer dans la compétition.
     """
+
     nom: str
     saison: Saison
 
     @classmethod
     def near_wgs84(self, latitude: float, longitude: float) -> List["Plateau"]:
-        """
-        """
+        """ """
         # TODO
         return []
 
     @classmethod
     def from_ville(self, ville: str) -> List["Plateau"]:
-        """
-        """
+        """ """
         # TODO
         return []
+
+
+async def dq_query(action: str, **kwargs) -> Optional[Dict]:
+    params = urllib.parse.urlencode(kwargs)
+    url = f"{DQURL}/{action}?{params}"
+    r = await CLIENT.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
+
+
+async def ville_organization(ville: str) -> Optional[str]:
+    """Trouver le nom d'organisme pour une ville"""
+    villes = await dq_query("organization_autocomplete", q=ville)
+    if villes is None:
+        return None
+    for org in villes["result"]:
+        if "ville" in org["name"]:
+            return org["name"]
+        elif "municipal" in org["name"]:
+            return org["name"]
+    return villes["result"][0]["name"]
+
+
+async def ville_parcs(org: str) -> Optional[str]:
+    """Trouver le GeoJSON des parcs pour une ville."""
+    result = await dq_query("package_search", q=f"(organization:{org} AND title:parcs)")
+    if result is None:
+        return None
+    if result["result"]["count"] == 0:
+        return None
+    dataset = result["result"]["results"][0]
+    LOGGER.info("Parcs trouvés pour %s: %s", org, dataset["title"])
+    for resource in dataset["resources"]:
+        if resource["format"] == "GeoJSON":
+            LOGGER.info("GeoJSON trouvé pour %s: %s", dataset["title"], resource["url"])
+            return resource["url"]
+    return None
+
+
+async def async_main(args: argparse.Namespace):
+    """fonction principale async"""
+    for v in args.villes:
+        org = await ville_organization(v)
+        if org is None:
+            LOGGER.error("Aucun organisme trouvé pour %s", v)
+            continue
+        LOGGER.info("Ville trouvée pour %s: %s", v, org)
+        parcs = await ville_parcs(org)
+        if parcs is None:
+            LOGGER.warning("Aucun données de parcs trouvé pour %s", org)
+            continue
+
+
+def main():
+    """Créer les jeux de données pour les plateaux d'activité."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("villes", help="Noms des villes", nargs="*", default=VILLES)
+    args = parser.parse_args()
+    asyncio.run(async_main(args))
