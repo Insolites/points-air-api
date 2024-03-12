@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from .villes import Ville
+from .plateaux import Plateau
 
 LOGGER = logging.getLogger("points-air-api")
 
@@ -40,8 +41,41 @@ async def home_page(request: Request):
 
 
 @app.get("/ville/{latitude},{longitude}")
-async def ville(latitude: float, longitude: float):
+async def ville_wsg84(latitude: float, longitude: float):
     """
     Localiser un emplacement dans une des villes de compétition.
     """
     return Ville.from_wgs84(latitude, longitude)
+
+
+@app.get("/plateaux/{latitude},{longitude}")
+async def activ_wgs84(latitude: float, longitude: float):
+    """
+    Localiser des activités par emplacement
+    """
+    return Plateau.near_wgs84(latitude, longitude)
+
+
+@app.get("/plateaux/{ville}")
+async def activ_ville(ville: str):
+    """
+    Localiser des activités par ville
+    """
+    return Plateau.from_ville(ville)
+
+
+@app.get("/palmares")
+async def palmares():
+    """Obtenir les palmares des villes"""
+    # TODO
+    return []
+
+
+@app.get("/contributions")
+async def contributions():
+    """Obtenir les contributions d'un utilisateur"""
+    # TODO
+    return []
+
+
+# TODO: CrUD pour activités
