@@ -28,7 +28,6 @@ dependencies = [
   "httpx",
   "fastapi",
   "uvicorn[standard]",
-  "python-dotenv",
   "shapely",
 ]
 
