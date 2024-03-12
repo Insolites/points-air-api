@@ -33,5 +33,13 @@ app.add_middleware(CORSMiddleware, allow_methods=["GET", "OPTIONS"], **middlewar
 
 
 @app.get("/")
-def home_page(request: Request):
+async def home_page(request: Request):
     return "Bonjour!"
+
+
+@app.get("/ville/{latitude},{longitude}")
+async def ville(latitude: float, longitude: float):
+    """
+    Localiser un emplacement dans une des villes de compétition.
+    """
+    return Ville.from_wgs84(latitude, longitude)
