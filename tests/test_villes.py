@@ -22,3 +22,9 @@ def test_find_laval():
     laval = Ville.from_wgs84(*quelque_part_a_laval)
     # On se trouve bel et bien à Laval
     assert laval.nom == "Laval"
+    # On se trouve nulle part (sur la Rive-Nord)
+    not_laval = Ville.from_wgs84(45.628861, -73.804224)
+    assert not_laval is None
+    # On se trouve à Repentigny (et pas à Laval)
+    repentigny = Ville.from_wgs84(45.768380, -73.431657)
+    assert repentigny.nom != "Laval"

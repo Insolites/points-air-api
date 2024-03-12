@@ -9,8 +9,8 @@ import asyncio
 import json
 import urllib
 
-from shapely import Point, prepare
-from shapely.geometry import shape
+from shapely import Point, prepare  # type: ignore
+from shapely.geometry import shape  # type: ignore
 from pathlib import Path
 from pydantic import BaseModel
 from typing import Optional
@@ -78,6 +78,8 @@ async def async_main(args: argparse.Namespace):
     ville_dict = {}
     for v in args.villes:
         fc = await ville_json(v)
+        if fc is None:
+            raise RuntimeError(f"Impossible de chercher {v} sur iCherche")
         ville_dict[v] = fc["features"][0]
     print(json.dumps(ville_dict, indent=2, ensure_ascii=False))
 
