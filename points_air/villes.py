@@ -6,6 +6,7 @@ villes, ainsi que pour localiser des emplacements à l'intérieur des villes.
 
 import urllib
 
+from pydantic import BaseModel
 from typing import Optional
 from httpx import AsyncClient
 
@@ -31,3 +32,13 @@ async def ville_json(name: str) -> Optional[dict]:
     if r.status_code != 200:
         return None
     return r.json()
+
+
+class Ville(BaseModel):
+    """
+    Une ville de compétition.
+    """
+    @classmethod
+    def from_wgs84(self, latitude: float, longitude: float) -> "Ville":
+        # TODO
+        return Ville()

@@ -6,6 +6,8 @@ import dotenv
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from .villes import Ville
+
 LOGGER = logging.getLogger("points-air-api")
 
 

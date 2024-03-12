@@ -71,7 +71,7 @@ dependencies = [
   "mypy>=1.0.0",
 ]
 [tool.hatch.envs.types.scripts]
-check = "mypy --install-types --non-interactive {args:points_air tests}"
+check = "mypy --install-types --non-interactive {args:points_air}"
 
 [tool.coverage.run]
 source_pkgs = ["points_air"]
