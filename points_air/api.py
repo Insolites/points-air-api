@@ -18,12 +18,16 @@ if CONFIG("DEVELOPMENT", default=False):
         allow_origin_regex="http://localhost(:.*)?",
     )
 else:
-    origin = CONFIG("ORIGIN", default="https://points-air.ecolingui.ca")
-    LOGGER.info("Requêtes seront acceptés de %s", origin)
-    middleware_args = dict(
-        allow_origins=[origin],
-    )
-app.add_middleware(CORSMiddleware, allow_methods=["GET", "OPTIONS"], **middleware_args)
+    origins = CONFIG(
+        "ORIGIN", default="https://points-air.ecolingui.ca https://insolites.github.io"
+    ).split()
+    LOGGER.info("Requêtes seront acceptés de: %s", origins)
+    middleware_args = dict(allow_origins=origins)
+app.add_middleware(
+    CORSMiddleware,
+    allow_methods=["GET", "PUT", "POST", "DELETE", "OPTIONS"],
+    **middleware_args
+)
 apiv1 = FastAPI()
 app.mount("/api/v1", apiv1)
 

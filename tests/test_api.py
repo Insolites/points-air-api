@@ -6,6 +6,6 @@ client = TestClient(app)
 
 
 def test_hello():
-    response = client.get("/")
+    response = client.get("/api/v1/")
     assert response.status_code == 200
     assert response.json() == "Bonjour!"
