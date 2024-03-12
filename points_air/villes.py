@@ -18,13 +18,10 @@ from httpx import AsyncClient
 
 CLIENT = AsyncClient()
 VILLES = """
+Laval
 Rimouski
 Repentigny
-Sainte-Adèle
-Montréal
-Laval
-Gatineau
-Sherbrooke
+Shawinigan
 """.strip().split()
 THISDIR = Path(__file__).parent
 VILLEGONS = {}
