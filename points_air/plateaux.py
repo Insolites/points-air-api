@@ -10,11 +10,11 @@ import asyncio
 import json
 import logging
 import urllib
-from typing import Dict, List, Literal, Union
+from typing import Dict, List, Literal, Tuple, Union
 
 from pydantic import BaseModel
 
-from .villes import CLIENT, VILLES, THISDIR
+from .villes import CLIENT, THISDIR, VILLES
 
 LOGGER = logging.getLogger("points-air-plateaux")
 DQURL = "https://www.donneesquebec.ca/recherche/api/3/action"
@@ -35,20 +35,40 @@ class Plateau(BaseModel):
     """
 
     nom: str
+    ville: str
     saison: Saison
     sports: List[Sport]
+    # FIXME: Utiliser les modeles pydantic_geojson
+    emplacement: Tuple[float, float]
+    # FIXME: Inclure la geometrie aussi
 
     @classmethod
     def near_wgs84(self, latitude: float, longitude: float) -> List["Plateau"]:
         """ """
         # TODO
-        return []
+        return [
+            Plateau(
+                nom="Parc de l'Île-Melville",
+                ville="Shawinigan",
+                saison="QuatreSaisons",
+                sports=["Marche", "Course"],
+                emplacement=(46.53507358332476, -72.75478338821179),
+            )
+        ]
 
     @classmethod
     def from_ville(self, ville: str) -> List["Plateau"]:
         """ """
         # TODO
-        return []
+        return [
+            Plateau(
+                nom="Parc de l'Île-Melville",
+                ville="Shawinigan",
+                saison="QuatreSaisons",
+                sports=["Marche", "Course"],
+                emplacement=(46.53507358332476, -72.75478338821179),
+            )
+        ]
 
 
 async def dq_query(action: str, **kwargs) -> Union[Dict, None]:

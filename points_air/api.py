@@ -99,7 +99,7 @@ class Observation(BaseModel):
     date: datetime.datetime
     code_espece: str
     # FIXME: Utiliser les modeles pydantic_geojson
-    location: Tuple[float, float]
+    emplacement: Tuple[float, float]
 
 
 @apiv1.get("/observations")
