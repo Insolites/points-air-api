@@ -17,6 +17,7 @@ from typing import Optional
 from httpx import AsyncClient
 
 CLIENT = AsyncClient()
+ICHERCHE = "https://geoegl.msp.gouv.qc.ca/apis/icherche"
 VILLES = """
 Laval
 Rimouski
@@ -39,6 +40,7 @@ class Ville(BaseModel):
     """
     Une ville de compétition.
     """
+
     nom: str
 
     @classmethod
@@ -50,21 +52,10 @@ class Ville(BaseModel):
         return None
 
 
-def icherche_url(ville: str) -> str:
-    """Construire le URL pour chercher une ville dans iCherche"""
-    params = urllib.parse.urlencode(
-        {
-            "type": "municipalites",
-            "q": ville,
-            "limit": 1,
-            "geometry": 1,
-        }
-    )
-    return f"https://geoegl.msp.gouv.qc.ca/apis/icherche/geocode?{params}"
-
-
-async def ville_json(name: str) -> Optional[dict]:
-    url = icherche_url(name)
+async def icherche_query(action: str, **kwargs) -> Optional[dict]:
+    """Lancer une requête sur iCherche"""
+    params = urllib.parse.urlencode(kwargs)
+    url = f"{ICHERCHE}/{action}?{params}"
     r = await CLIENT.get(url)
     if r.status_code != 200:
         return None
@@ -74,7 +65,13 @@ async def ville_json(name: str) -> Optional[dict]:
 async def async_main(args: argparse.Namespace):
     ville_dict = {}
     for v in args.villes:
-        fc = await ville_json(v)
+        fc = await icherche_query(
+            "geocode",
+            type="municipalites",
+            q=v,
+            limit=1,
+            geometry=1,
+        )
         if fc is None:
             raise RuntimeError(f"Impossible de chercher {v} sur iCherche")
         ville_dict[v] = fc["features"][0]

@@ -1,17 +1,20 @@
+import datetime
 import logging
+from typing import Dict, List, Tuple, Union
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from starlette.config import Config
 
+from .plateaux import Plateau, Sport
 from .villes import Ville
-from .plateaux import Plateau
 
 LOGGER = logging.getLogger("points-air-api")
 CONFIG = Config()
 logging.basicConfig(level=logging.INFO)
 app = FastAPI()
-middleware_args: dict[str, str | list[str]]
+middleware_args: Dict[str, Union[str, List[str]]]
 if CONFIG("DEVELOPMENT", default=False):
     LOGGER.info("En mode développement, requêtes seront acceptés de http://localhost:*")
     middleware_args = dict(
@@ -61,18 +64,53 @@ async def activ_ville(ville: str):
     return Plateau.from_ville(ville)
 
 
+class Score(BaseModel):
+    ville: str
+    score: int
+
+
 @apiv1.get("/palmares")
 async def palmares():
     """Obtenir les palmares des villes"""
     # TODO
-    return []
+    return [
+        Score(ville="Rimouski", score=123),
+        Score(ville="Shawinigan", score=99),
+        Score(ville="Repentigny", score=49),
+        Score(ville="Laval", score=33),
+    ]
+
+
+class Activite(BaseModel):
+    user: str
+    sport: Sport
+    date: datetime.datetime
 
 
 @apiv1.get("/contributions")
-async def contributions():
+async def contributions(user: str, skip: int = 0, limit: int = 10):
     """Obtenir les contributions d'un utilisateur"""
     # TODO
-    return []
+    return [Activite(user="dhdaines", sport="Course", date="2024-03-12")]
 
 
-# TODO: CrUD pour activités
+class Observation(BaseModel):
+    user: str
+    date: datetime.datetime
+    code_espece: str
+    # FIXME: Utiliser les modeles pydantic_geojson
+    location: Tuple[float, float]
+
+
+@apiv1.get("/observations")
+async def observations():
+    """Obtenir les observations d'EEE"""
+    # TODO
+    return [
+        Observation(
+            user="dhdaines",
+            date="2024-03-12",
+            code_espece="RENOJ",
+            location=(45.95781529453835, -74.14215499821823),
+        )
+    ]

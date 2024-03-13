@@ -29,6 +29,7 @@ dependencies = [
   "fastapi",
   "uvicorn[standard]",
   "shapely",
+  "pydantic-geojson",
 ]
 
 [project.urls]

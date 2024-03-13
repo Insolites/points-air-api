@@ -1,12 +1,14 @@
 import pytest
 
-from points_air.villes import ville_json, Ville
+from points_air.villes import icherche_query, Ville
 
 
 @pytest.mark.anyio
 async def test_laval():
     """Trouver Laval avec iCherche"""
-    geom = await ville_json("Laval")
+    geom = await icherche_query(
+        "geocode", type="municipalites", q="Laval", limit=1, geometry=1
+    )
     # inutile de faire assert parce que ça va planter tout de suite si
     # ces membres sont absents!
     features = geom["features"]

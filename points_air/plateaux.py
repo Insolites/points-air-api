@@ -7,17 +7,26 @@ ville.
 
 import argparse
 import asyncio
+import json
 import logging
 import urllib
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Literal, Union
 
 from pydantic import BaseModel
 
-from .villes import CLIENT, VILLES
+from .villes import CLIENT, VILLES, THISDIR
 
 LOGGER = logging.getLogger("points-air-plateaux")
 DQURL = "https://www.donneesquebec.ca/recherche/api/3/action"
+try:
+    with open(THISDIR / "plateaux.json", "rt") as infh:
+        PLATEAUX = json.load(infh)
+except json.JSONDecodeError:  # Si on reconstruit le JSON..
+    PLATEAUX = {}
+
+
 Saison = Literal["Hiver", "TroisSaisons", "QuatreSaisons"]
+Sport = Literal["Marche", "Course", "Vélo"]
 
 
 class Plateau(BaseModel):
@@ -27,6 +36,7 @@ class Plateau(BaseModel):
 
     nom: str
     saison: Saison
+    sports: List[Sport]
 
     @classmethod
     def near_wgs84(self, latitude: float, longitude: float) -> List["Plateau"]:
@@ -41,7 +51,8 @@ class Plateau(BaseModel):
         return []
 
 
-async def dq_query(action: str, **kwargs) -> Optional[Dict]:
+async def dq_query(action: str, **kwargs) -> Union[Dict, None]:
+    """Lancer une requête sur Données Québec"""
     params = urllib.parse.urlencode(kwargs)
     url = f"{DQURL}/{action}?{params}"
     r = await CLIENT.get(url)
@@ -50,7 +61,7 @@ async def dq_query(action: str, **kwargs) -> Optional[Dict]:
     return r.json()
 
 
-async def ville_organization(ville: str) -> Optional[str]:
+async def ville_organization(ville: str) -> Union[str, None]:
     """Trouver le nom d'organisme pour une ville"""
     villes = await dq_query("organization_autocomplete", q=ville)
     if villes is None:
@@ -63,7 +74,7 @@ async def ville_organization(ville: str) -> Optional[str]:
     return villes["result"][0]["name"]
 
 
-async def ville_parcs(org: str) -> Optional[str]:
+async def ville_parcs(org: str) -> Union[str, None]:
     """Trouver le GeoJSON des parcs pour une ville."""
     result = await dq_query("package_search", q=f"(organization:{org} AND title:parcs)")
     if result is None:

@@ -11,8 +11,9 @@ développement avec:
 
     hatch run dev
 
-Naviguez à http://127.0.0.1:8092/ (ou l'adresse émise par les messages
-sur le console) pour confirmer que ça fonctionne.
+Naviguez à http://127.0.0.1:8092/api/v1/docs pour confirmer que ça
+fonctionne.  Vous pourrez lire la documentation et essayer l'API (avec
+des fausses données pour le moment).
 
 ## Utilisation
 
