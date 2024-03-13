@@ -41,6 +41,13 @@ async def home_page(request: Request) -> str:
     return "Bonjour!"
 
 
+@apiv1.get("/villes")
+async def villes(geometry: bool = False) -> List[Ville]:
+    """
+    Obtenir la liste de villes de compétition.
+    """
+
+
 @apiv1.get("/ville/{latitude},{longitude}")
 async def ville_wsg84(latitude: float, longitude: float) -> Ville:
     """
@@ -49,20 +56,20 @@ async def ville_wsg84(latitude: float, longitude: float) -> Ville:
     return Ville.from_wgs84(latitude, longitude)
 
 
-@apiv1.get("/plateaux/{latitude},{longitude}")
-async def activ_wgs84(latitude: float, longitude: float) -> List[Plateau]:
-    """
-    Localiser des activités par emplacement
-    """
-    return Plateau.near_wgs84(latitude, longitude)
-
-
 @apiv1.get("/plateaux/{ville}")
 async def activ_ville(ville: str) -> List[Plateau]:
     """
     Localiser des activités par ville
     """
     return Plateau.from_ville(ville)
+
+
+@apiv1.get("/plateaux/{latitude},{longitude}")
+async def activ_wgs84(latitude: float, longitude: float) -> List[Plateau]:
+    """
+    Localiser des activités par emplacement
+    """
+    return Plateau.near_wgs84(latitude, longitude)
 
 
 class Score(BaseModel):

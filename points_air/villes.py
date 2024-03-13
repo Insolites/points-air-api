@@ -8,30 +8,30 @@ import argparse
 import asyncio
 import json
 import urllib
+import shapely  # type: ignore
 
-from shapely import Point, prepare  # type: ignore
-from shapely.geometry import shape  # type: ignore
 from pathlib import Path
 from pydantic import BaseModel
-from typing import Optional
+from pydantic_geojson import Point, Feature
+from typing import Union
 from httpx import AsyncClient
 
 CLIENT = AsyncClient()
 ICHERCHE = "https://geoegl.msp.gouv.qc.ca/apis/icherche"
-VILLES = """
+NOMS = """
 Laval
 Rimouski
 Repentigny
 Shawinigan
 """.strip().split()
 THISDIR = Path(__file__).parent
-VILLEGONS = {}
+VILLES = []
 try:
     with open(THISDIR / "villes.json", "rt") as infh:
         feats = json.load(infh)
-    for v, f in feats.items():
-        VILLEGONS[v] = shape(f["geometry"])
-        prepare(VILLEGONS[v])
+    for nom, feature_collection in feats.items():
+        VILLES[nom] = shapely.geometry.shape(feature_collection["geometry"])
+        shapely.prepare(VILLES[nom])
 except json.JSONDecodeError:  # Si on reconstruit le JSON..
     pass
 
@@ -40,19 +40,25 @@ class Ville(BaseModel):
     """
     Une ville de compétition.
     """
-
+    id: str
+    """Identifieur pour cette ville (nom d'organisme dans l'api DQ)"""
     nom: str
+    """Nom usuel de cette ville"""
+    centroide: Point
+    """Centroïde géométrique de cette ville"""
+    geometrie: Union[Feature, None]
+    """Géométrie GeoJSON de cette ville (fort probablement une MultiPolygon)"""
 
     @classmethod
-    def from_wgs84(self, latitude: float, longitude: float) -> Optional["Ville"]:
-        p = Point(longitude, latitude)
-        for v, g in VILLEGONS.items():
+    def from_wgs84(self, latitude: float, longitude: float) -> Union["Ville", None]:
+        p = shapely.Point(longitude, latitude)
+        for v, g in VILLES.items():
             if g.contains(p):
                 return Ville(nom=v)
         return None
 
 
-async def icherche_query(action: str, **kwargs) -> Optional[dict]:
+async def icherche_query(action: str, **kwargs) -> Union[dict, None]:
     """Lancer une requête sur iCherche"""
     params = urllib.parse.urlencode(kwargs)
     url = f"{ICHERCHE}/{action}?{params}"
@@ -81,6 +87,6 @@ async def async_main(args: argparse.Namespace):
 def main():
     """Télécharger GeoJSON pour toutes les villes."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("villes", help="Noms des villes", nargs="*", default=VILLES)
+    parser.add_argument("villes", help="Noms des villes", nargs="*", default=NOMS)
     args = parser.parse_args()
     asyncio.run(async_main(args))

@@ -10,9 +10,10 @@ import asyncio
 import json
 import logging
 import urllib
-from typing import Dict, List, Literal, Tuple, Union
+from typing import Dict, List, Literal, Union
 
 from pydantic import BaseModel
+from pydantic_geojson import Point, Feature
 
 from .villes import CLIENT, THISDIR, VILLES
 
@@ -34,13 +35,20 @@ class Plateau(BaseModel):
     Plateau d'activité physique pour participer dans la compétition.
     """
 
+    id: str
+    """Identificateur unique pour ce plateau d'activité"""
     nom: str
+    """Nom usuel de ce plateau"""
     ville: str
+    """Identificateur de la ville où se trouve ce plateau"""
     saison: Saison
+    """Saisons d'utilisation de ce plateau"""
     sports: List[Sport]
-    # FIXME: Utiliser les modeles pydantic_geojson
-    emplacement: Tuple[float, float]
-    # FIXME: Inclure la geometrie aussi
+    """Sports pratiqués à cet endroits"""
+    centroide: Point
+    """Centroïde géométrique de ce plateau"""
+    geometrie: Union[Feature, None]
+    """Géométrie GeoJSON de ce plateau (Point ou MultiPolygon)"""
 
     @classmethod
     def near_wgs84(self, latitude: float, longitude: float) -> List["Plateau"]:
