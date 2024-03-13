@@ -1,12 +1,13 @@
 import datetime
 import logging
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Union
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from starlette.config import Config
 
+from .especes import Espece, Observation, ESPECES
 from .plateaux import Plateau, Sport
 from .villes import Ville
 
@@ -94,14 +95,6 @@ async def contributions(user: str, skip: int = 0, limit: int = 10) -> List[Activ
     return [Activite(user="dhdaines", sport="Course", date="2024-03-12")]
 
 
-class Observation(BaseModel):
-    user: str
-    date: datetime.datetime
-    code_espece: str
-    # FIXME: Utiliser les modeles pydantic_geojson
-    emplacement: Tuple[float, float]
-
-
 @apiv1.get("/observations")
 async def observations() -> List[Observation]:
     """Obtenir les observations d'EEE"""
@@ -114,3 +107,9 @@ async def observations() -> List[Observation]:
             emplacement=(45.95781529453835, -74.14215499821823),
         )
     ]
+
+
+@apiv1.get("/especes")
+async def especes() -> List[Espece]:
+    """Obtenir la liste d'EEE"""
+    return ESPECES
