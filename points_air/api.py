@@ -36,12 +36,12 @@ app.mount("/api/v1", apiv1)
 
 
 @apiv1.get("/")
-async def home_page(request: Request):
+async def home_page(request: Request) -> str:
     return "Bonjour!"
 
 
 @apiv1.get("/ville/{latitude},{longitude}")
-async def ville_wsg84(latitude: float, longitude: float):
+async def ville_wsg84(latitude: float, longitude: float) -> Ville:
     """
     Localiser un emplacement dans une des villes de compétition.
     """
@@ -49,7 +49,7 @@ async def ville_wsg84(latitude: float, longitude: float):
 
 
 @apiv1.get("/plateaux/{latitude},{longitude}")
-async def activ_wgs84(latitude: float, longitude: float):
+async def activ_wgs84(latitude: float, longitude: float) -> List[Plateau]:
     """
     Localiser des activités par emplacement
     """
@@ -57,7 +57,7 @@ async def activ_wgs84(latitude: float, longitude: float):
 
 
 @apiv1.get("/plateaux/{ville}")
-async def activ_ville(ville: str):
+async def activ_ville(ville: str) -> List[Plateau]:
     """
     Localiser des activités par ville
     """
@@ -70,7 +70,7 @@ class Score(BaseModel):
 
 
 @apiv1.get("/palmares")
-async def palmares():
+async def palmares() -> List[Score]:
     """Obtenir les palmares des villes"""
     # TODO
     return [
@@ -88,7 +88,7 @@ class Activite(BaseModel):
 
 
 @apiv1.get("/contributions")
-async def contributions(user: str, skip: int = 0, limit: int = 10):
+async def contributions(user: str, skip: int = 0, limit: int = 10) -> List[Activite]:
     """Obtenir les contributions d'un utilisateur"""
     # TODO
     return [Activite(user="dhdaines", sport="Course", date="2024-03-12")]
@@ -103,7 +103,7 @@ class Observation(BaseModel):
 
 
 @apiv1.get("/observations")
-async def observations():
+async def observations() -> List[Observation]:
     """Obtenir les observations d'EEE"""
     # TODO
     return [
