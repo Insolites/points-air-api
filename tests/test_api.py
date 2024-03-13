@@ -1,4 +1,4 @@
-from points_air import app
+from points_air.api import app
 from fastapi.testclient import TestClient
 
 

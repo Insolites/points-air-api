@@ -47,7 +47,7 @@ async def villes(geometry: bool = False) -> List[Ville]:
     Obtenir la liste de villes de compétition.
     """
     return [
-        v.model_dump_json(exclude=None if geometry else "geometry")
+        v.model_dump(exclude=None if geometry else "geometry")
         for v in VILLES.values()
     ]
 
