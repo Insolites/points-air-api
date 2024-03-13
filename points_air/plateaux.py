@@ -9,7 +9,7 @@ import logging
 from typing import List, Literal, Union
 
 from pydantic import BaseModel
-from pydantic_geojson import PointModel, FeatureModel
+from pydantic_geojson import PointModel, FeatureModel  # type: ignore
 
 LOGGER = logging.getLogger("points-air-plateaux")
 
@@ -35,7 +35,7 @@ class Plateau(BaseModel):
     """Sports pratiqués à cet endroits"""
     centroide: PointModel
     """Centroïde géométrique de ce plateau"""
-    geometrie: Union[FeatureModel, None]
+    geometrie: Union[FeatureModel, None] = None
     """Géométrie GeoJSON de ce plateau (Point ou MultiPolygon)"""
 
     @classmethod
@@ -44,8 +44,9 @@ class Plateau(BaseModel):
         # TODO
         return [
             Plateau(
+                id="FIXME",
                 nom="Parc de l'Île-Melville",
-                ville="Shawinigan",
+                ville="ville-de-shawinigan",
                 saison="QuatreSaisons",
                 sports=["Marche", "Course"],
                 centroide=PointModel(coordinates=(-72.75478338821179, 46.53507358332476)),
@@ -58,8 +59,9 @@ class Plateau(BaseModel):
         # TODO
         return [
             Plateau(
+                id="FIXME",
                 nom="Parc de l'Île-Melville",
-                ville="Shawinigan",
+                ville="ville-de-shawinigan",
                 saison="QuatreSaisons",
                 sports=["Marche", "Course"],
                 centroide=PointModel(coordinates=(-72.75478338821179, 46.53507358332476)),

@@ -3,7 +3,7 @@ import datetime
 from pathlib import Path
 
 from pydantic import BaseModel
-from pydantic_geojson import PointModel
+from pydantic_geojson import PointModel  # type: ignore
 
 THISDIR = Path(__file__).parent
 CATEGORIES = {

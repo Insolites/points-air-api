@@ -5,20 +5,26 @@ import argparse
 import asyncio
 import logging
 import urllib
-import shapely
-from typing import Union, Dict, Iterator
+from pathlib import Path
+from typing import AsyncIterator, Dict, Union
 
+import shapely  # type: ignore
 from httpx import AsyncClient
 from pydantic import RootModel
-from pydantic_geojson import FeatureModel, FeatureCollectionModel, PointModel
+from pydantic_geojson import (  # type: ignore
+    FeatureCollectionModel,
+    FeatureModel,
+    PointModel,
+)
 
-from .villes import Ville
 from .plateaux import Plateau
+from .villes import Ville, VilleCollection
 
 CLIENT = AsyncClient()
 LOGGER = logging.getLogger("points-air-data")
 ICHERCHE = "https://geoegl.msp.gouv.qc.ca/apis/icherche"
 DQURL = "https://www.donneesquebec.ca/recherche/api/3/action"
+THISDIR = Path(__file__).parent
 
 
 async def icherche_query(action: str, **kwargs) -> Union[FeatureCollectionModel, None]:
@@ -84,15 +90,11 @@ async def ville_parcs(org: str) -> Union[str, None]:
     return None
 
 
-VilleCollection = RootModel[Dict[str, Ville]]
-
-
-async def find_plateaux(ville: Ville) -> Iterator[Plateau]:
+async def find_plateaux(ville: Ville):
     """Chercher des plateaux d'activité extérieure pour une ville."""
     parcs = await ville_parcs(ville.id)
     if parcs is None:
         LOGGER.warning("Aucun données de parcs trouvé pour %s", ville.id)
-        return
 
 
 async def find_ville(nom: str) -> Union[Ville, None]:
@@ -120,14 +122,16 @@ async def find_ville(nom: str) -> Union[Ville, None]:
 async def async_main(args: argparse.Namespace):
     """Fonction principale async."""
     v = await asyncio.gather(*(find_ville(nom) for nom in args.villes))
-    villes = VilleCollection(**{ville.id: ville for ville in v if ville is not None})
+    villes = VilleCollection({ville.id: ville for ville in v if ville is not None})
     print(villes.model_dump_json(indent=2))
 
 
 def main():
     """Télécharger GeoJSON pour toutes les villes."""
+    with open(THISDIR / "villes.txt") as infh:
+        villes = [spam.strip() for spam in infh]
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("villes", help="Noms des villes", nargs="*")
+    parser.add_argument("villes", help="Noms des villes", nargs="*", default=villes)
     parser.add_argument(
         "-v", "--verbose", help="Informations verboses pour debug", action="store_true"
     )
