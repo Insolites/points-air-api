@@ -1,12 +1,14 @@
 """Villes de compétition et leurs emplacements."""
 
-import shapely  # type: ignore
-
+import logging
 from pathlib import Path
-from pydantic import BaseModel, RootModel
-from pydantic_geojson import PointModel, FeatureModel  # type: ignore
-from typing import Union, Dict
+from typing import Dict, Union
 
+import shapely  # type: ignore
+from pydantic import BaseModel, RootModel
+from pydantic_geojson import FeatureModel, PointModel  # type: ignore
+
+LOGGER = logging.getLogger("points-air-villes")
 SHAPES: Dict[str, shapely.Geometry] = {}
 VILLES: Dict[str, "Ville"]
 
@@ -15,6 +17,7 @@ class Ville(BaseModel):
     """
     Une ville de compétition.
     """
+
     id: str
     """Identifieur pour cette ville (nom d'organisme dans l'api DQ)"""
     nom: str
@@ -30,6 +33,7 @@ class Ville(BaseModel):
         for v, s in SHAPES.items():
             if s.contains(p):
                 return VILLES[v]
+        return None
 
 
 class Score(BaseModel):
@@ -45,11 +49,12 @@ with open(THISDIR / "villes.json") as infh:
     data = infh.read()
     VILLES = VilleCollection.model_validate_json(data).root
     for v in VILLES.values():
+        if v.feature is None:
+            LOGGER.warning(
+                "feature pour %s ne devrait pas être None dans villes.json", v.id
+            )
+            continue
         # FIXME: THERE MUST BE A BETTER WAY
         shape = shapely.from_geojson(v.feature.model_dump_json())
         shapely.prepare(shape)
         SHAPES[v.id] = shape
-
-if __name__ == "__main__":
-    for v, s in SHAPES.items():
-        print(v, s.centroid, Ville.from_wgs84(s.centroid.y, s.centroid.x).nom)
