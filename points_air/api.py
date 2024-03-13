@@ -111,6 +111,6 @@ async def observations() -> List[Observation]:
             user="dhdaines",
             date="2024-03-12",
             code_espece="RENOJ",
-            location=(45.95781529453835, -74.14215499821823),
+            emplacement=(45.95781529453835, -74.14215499821823),
         )
     ]
