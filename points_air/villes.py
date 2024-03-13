@@ -21,7 +21,7 @@ class Ville(BaseModel):
     """Nom usuel de cette ville"""
     centroide: PointModel
     """Centroïde géométrique de cette ville"""
-    feature: Union[FeatureModel, None]
+    feature: Union[FeatureModel, None] = None
     """Feature GeoJSON de cette ville (fort probablement une MultiPolygon)"""
 
     @classmethod
