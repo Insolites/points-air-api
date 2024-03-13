@@ -1,4 +1,5 @@
 # points-air-api
+
 API Backend pour Points-Air
 
 ## Installation
@@ -24,23 +25,19 @@ s'authentifier avec un compte d'utilisateur.
 FIXME: authentification à déterminer (de préférence passwordless)
 
 Les scores et les activités sont regroupés par ville.  Pour le moment
-la sélection de villes est limité à celles-ci:
+la sélection de villes est limité à celles-ci puisqu'elles ont des
+données normalisés pour leur parcs et espaces verts:
 
 - Rimouski
 - Repentigny
-- Sainte-Adèle
-- Montréal
-- Laval
-- Gatineau
-- Sherbrooke
+- Shawinigan
 
 Les informations et fonctions disponibles sont:
 
 - Localiser l'utilisateur dans une ville
-- Localiser les activités les plus proches selon des critéres (type
-  d'activité, météo, etc)
+- Localiser les activités les plus proches
 - Localiser les observations de EEE les plus proches
-- Obtenir les palmarés des observations selon la ville
+- Obtenir les palmarés des activités selon la ville
 - Obtenir les contributions de l'utilisateur
 - (protégée) Planifier une activité
 - (protégée) Confirmer une activité
@@ -69,7 +66,9 @@ Puisqu'il n'est pas vraiment souhaitable d'avoir des EEE sur son
 territoire, on n'augmente pas le score de sa ville en les signalant.
 
 Puisque les activités prises en charge sont terrestres de nature,
-seulement les EEE terrestres sont concernés, c'est à dire les catégories suivantes dans [la liste Sentinelle](https://www.donneesquebec.ca/recherche/dataset/especes-exotiques-envahissantes/resource/ac4aeddf-13ed-4d80-9ca3-28ca9ed77b14):
+seulement les EEE terrestres sont concernés, c'est à dire les
+catégories suivantes dans [la liste
+Sentinelle](https://www.donneesquebec.ca/recherche/dataset/especes-exotiques-envahissantes/resource/ac4aeddf-13ed-4d80-9ca3-28ca9ed77b14):
 
 - Plantes de milieux terrestres
 - Plantes émergentes
