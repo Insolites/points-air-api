@@ -1,86 +1,55 @@
-"""Villes de compétition et leurs emplacements.
+"""Villes de compétition et leurs emplacements."""
 
-Ce module regroupe les fonctions pour télécharger les géométries des
-villes, ainsi que pour localiser des emplacements à l'intérieur des villes.
-"""
+import shapely  # type: ignore
 
-import argparse
-import asyncio
-import json
-import urllib
-
-from shapely import Point, prepare  # type: ignore
-from shapely.geometry import shape  # type: ignore
 from pathlib import Path
-from pydantic import BaseModel
-from typing import Optional
-from httpx import AsyncClient
+from pydantic import BaseModel, RootModel
+from pydantic_geojson import PointModel, FeatureModel  # type: ignore
+from typing import Union, Dict
 
-CLIENT = AsyncClient()
-ICHERCHE = "https://geoegl.msp.gouv.qc.ca/apis/icherche"
-VILLES = """
-Laval
-Rimouski
-Repentigny
-Shawinigan
-""".strip().split()
-THISDIR = Path(__file__).parent
-VILLEGONS = {}
-try:
-    with open(THISDIR / "villes.json", "rt") as infh:
-        feats = json.load(infh)
-    for v, f in feats.items():
-        VILLEGONS[v] = shape(f["geometry"])
-        prepare(VILLEGONS[v])
-except json.JSONDecodeError:  # Si on reconstruit le JSON..
-    pass
+SHAPES: Dict[str, shapely.Geometry] = {}
+VILLES: Dict[str, "Ville"]
 
 
 class Ville(BaseModel):
     """
     Une ville de compétition.
     """
-
+    id: str
+    """Identifieur pour cette ville (nom d'organisme dans l'api DQ)"""
     nom: str
+    """Nom usuel de cette ville"""
+    centroide: PointModel
+    """Centroïde géométrique de cette ville"""
+    feature: Union[FeatureModel, None] = None
+    """Feature GeoJSON de cette ville (fort probablement une MultiPolygon)"""
 
     @classmethod
-    def from_wgs84(self, latitude: float, longitude: float) -> Optional["Ville"]:
-        p = Point(longitude, latitude)
-        for v, g in VILLEGONS.items():
-            if g.contains(p):
-                return Ville(nom=v)
-        return None
+    def from_wgs84(self, latitude: float, longitude: float) -> Union["Ville", None]:
+        p = shapely.Point(longitude, latitude)
+        for v, s in SHAPES.items():
+            if s.contains(p):
+                return VILLES[v]
 
 
-async def icherche_query(action: str, **kwargs) -> Optional[dict]:
-    """Lancer une requête sur iCherche"""
-    params = urllib.parse.urlencode(kwargs)
-    url = f"{ICHERCHE}/{action}?{params}"
-    r = await CLIENT.get(url)
-    if r.status_code != 200:
-        return None
-    return r.json()
+class Score(BaseModel):
+    ville: str
+    """Identificateur d'une ville"""
+    score: int
+    """Score d'activité physique"""
 
 
-async def async_main(args: argparse.Namespace):
-    ville_dict = {}
-    for v in args.villes:
-        fc = await icherche_query(
-            "geocode",
-            type="municipalites",
-            q=v,
-            limit=1,
-            geometry=1,
-        )
-        if fc is None:
-            raise RuntimeError(f"Impossible de chercher {v} sur iCherche")
-        ville_dict[v] = fc["features"][0]
-    print(json.dumps(ville_dict, indent=2, ensure_ascii=False))
+THISDIR = Path(__file__).parent
+VilleCollection = RootModel[Dict[str, Ville]]
+with open(THISDIR / "villes.json") as infh:
+    data = infh.read()
+    VILLES = VilleCollection.model_validate_json(data).root
+    for v in VILLES.values():
+        # FIXME: THERE MUST BE A BETTER WAY
+        shape = shapely.from_geojson(v.feature.model_dump_json())
+        shapely.prepare(shape)
+        SHAPES[v.id] = shape
 
-
-def main():
-    """Télécharger GeoJSON pour toutes les villes."""
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("villes", help="Noms des villes", nargs="*", default=VILLES)
-    args = parser.parse_args()
-    asyncio.run(async_main(args))
+if __name__ == "__main__":
+    for v, s in SHAPES.items():
+        print(v, s.centroid, Ville.from_wgs84(s.centroid.y, s.centroid.x).nom)

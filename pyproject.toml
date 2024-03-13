@@ -39,8 +39,6 @@ Source = "https://github.com/insolites/points-air-api"
 
 [project.scripts]
 points_air_api = "points_air:main"
-points_air_villes = "points_air.villes:main"
-points_air_plateaux = "points_air.plateaux:main"
 
 [tool.hatch.version]
 path = "points_air/__about__.py"
@@ -54,6 +52,7 @@ dependencies = [
   "pytest",
 ]
 [tool.hatch.envs.default.scripts]
+data = "python -m points_air.data"
 test = "pytest {args:tests}"
 test-cov = "coverage run -m pytest {args:tests}"
 cov-report = [
@@ -64,7 +63,7 @@ cov = [
   "test-cov",
   "cov-report",
 ]
-dev = "DEVELOPMENT=True uvicorn points_air:app --port 8092 --reload"
+dev = "DEVELOPMENT=True uvicorn points_air.api:app --port 8092 --reload"
 
 [[tool.hatch.envs.all.matrix]]
 python = ["3.8", "3.9", "3.10", "3.11", "3.12"]
