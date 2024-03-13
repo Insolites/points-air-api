@@ -9,7 +9,7 @@ import shapely
 from typing import Union, Dict, Iterator
 
 from httpx import AsyncClient
-from pydantic import BaseModel, RootModel
+from pydantic import RootModel
 from pydantic_geojson import FeatureModel, FeatureCollectionModel, PointModel
 
 from .villes import Ville

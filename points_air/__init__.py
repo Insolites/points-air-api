@@ -1,12 +1,9 @@
-import dotenv
-import logging
 import uvicorn
-
-from .api import app
 
 
 def main():
     """Fonction principale"""
+    from .api import app
     uvicorn.run(app, port=8092)
 
 

@@ -1,9 +1,9 @@
 import csv
 import datetime
 from pathlib import Path
-from typing import Tuple
 
 from pydantic import BaseModel
+from pydantic_geojson import PointModel
 
 THISDIR = Path(__file__).parent
 CATEGORIES = {
@@ -18,8 +18,7 @@ class Observation(BaseModel):
     user: str
     date: datetime.datetime
     code_espece: str
-    # FIXME: Utiliser les modeles pydantic_geojson
-    emplacement: Tuple[float, float]
+    emplacement: PointModel
 
 
 class Espece(BaseModel):
