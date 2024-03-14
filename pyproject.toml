@@ -30,6 +30,7 @@ dependencies = [
   "uvicorn[standard]",
   "shapely",
   "pydantic-geojson",
+  "osm2geojson",
 ]
 
 [project.urls]

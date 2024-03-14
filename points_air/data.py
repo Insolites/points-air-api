@@ -8,6 +8,7 @@ import urllib
 from pathlib import Path
 from typing import Dict, Union
 
+import osm2geojson  # type: ignore
 import shapely  # type: ignore
 from httpx import AsyncClient
 from pydantic_geojson import (  # type: ignore
@@ -19,12 +20,21 @@ from pydantic_geojson import (  # type: ignore
 from .plateaux import Plateau
 from .villes import Ville, VilleCollection
 
-CLIENT = AsyncClient(follow_redirects=True)
+CLIENT = AsyncClient()
 LOGGER = logging.getLogger("points-air-data")
 ICHERCHE = "https://geoegl.msp.gouv.qc.ca/apis/icherche"
 DQURL = "https://www.donneesquebec.ca/recherche/api/3/action"
 NOMINATIM = "https://nominatim.openstreetmap.org/search"
+OVERPASS = "https://overpass-api.de/api/interpreter"
 THISDIR = Path(__file__).parent
+
+
+async def overpass_query(query: str) -> Union[Dict, None]:
+    """Lancer une requête sur Overpass"""
+    r = await CLIENT.post(OVERPASS, data={"data": query})
+    if r.status_code != 200:
+        return None
+    return r.json()
 
 
 async def nominatim_query(**kwargs) -> Union[Dict, None]:
@@ -33,7 +43,7 @@ async def nominatim_query(**kwargs) -> Union[Dict, None]:
     # support pas properties) .. faudrait utiliser l'autre geojson_pydantic
     params = urllib.parse.urlencode({**kwargs, "format": "jsonv2"})
     url = f"{NOMINATIM}?{params}"
-    r = await CLIENT.get(url)
+    r = await CLIENT.get(url, follow_redirects=True)
     if r.status_code != 200:
         return None
     return r.json()
@@ -105,15 +115,17 @@ async def ville_organization(ville: str) -> Union[Dict, None]:
     return villes["result"][0]
 
 
-async def ville_parcs(org: str) -> Union[str, None]:
+async def ville_parcs(ville: Ville) -> Union[str, None]:
     """Trouver le GeoJSON des parcs pour une ville."""
-    result = await dq_query("package_search", q=f"(organization:{org} AND title:parcs)")
+    result = await dq_query(
+        "package_search", q=f"(organization:{ville.id} AND title:parcs)"
+    )
     if result is None:
         return None
     if result["result"]["count"] == 0:
         return None
     dataset = result["result"]["results"][0]
-    LOGGER.info("Parcs trouvés pour %s: %s", org, dataset["title"])
+    LOGGER.info("Parcs trouvés pour %s: %s", ville.id, dataset["title"])
     for resource in dataset["resources"]:
         if resource["format"] == "GeoJSON":
             LOGGER.info("GeoJSON trouvé pour %s: %s", dataset["title"], resource["url"])
@@ -121,16 +133,37 @@ async def ville_parcs(org: str) -> Union[str, None]:
     return None
 
 
-async def find_plateaux(ville: str):
+async def ville_sentiers(ville: Ville) -> Union[Dict, None]:
+    """Trouver le GeoJSON des sentiers pour une ville."""
+    oql = f"""
+[out:json][timeout:25];
+area(id:{ville.overpass})->.searchArea;
+(
+nwr["highway"="path"](area.searchArea);
+nwr["highway"="footway"][!"footway"][!"crossing"](area.searchArea);
+nwr["highway"="cycleway"]["foot"="yes"](area.searchArea);
+);
+out geom;
+"""
+    data = await overpass_query(oql)
+    if data is None:
+        LOGGER.error("Échec de requête OverpassQL")
+        return None
+    return osm2geojson.json2geojson(data)
+
+
+async def find_plateaux(ville: Ville):
     """Chercher des plateaux d'activité extérieure pour une ville."""
-    parcs = await ville_parcs(ville)
+    (parcs, sentiers) = await asyncio.gather(ville_parcs(ville), ville_sentiers(ville))
     if parcs is None:
         LOGGER.warning("Aucun données de parcs trouvé pour %s", ville)
 
 
 async def find_ville(nom: str) -> Union[Ville, None]:
     """Obtenir informations pour une ville des API iCherche et DQ."""
-    (org, overpass, feature) = await asyncio.gather(ville_organization(nom), ville_overpass(nom), ville_feature(nom))
+    (org, overpass, feature) = await asyncio.gather(
+        ville_organization(nom), ville_overpass(nom), ville_feature(nom)
+    )
     if org is None:
         LOGGER.error("Aucun organisme trouvé pour %s", nom)
         return None
@@ -156,6 +189,14 @@ async def async_main(args: argparse.Namespace):
     villes = VilleCollection({ville.id: ville for ville in v if ville is not None})
     with open(THISDIR / "villes.json", "wt") as outfh:
         print(villes.model_dump_json(indent=2), file=outfh)
+    # Obtenir GeoJSON des sentiers pour les villes pour test (temporaire)
+    vs = await asyncio.gather(*(ville_sentiers(v) for v in villes.root.values()))
+    import json
+    for ville, data in zip(villes.root.values(), vs):
+        if ville is None:
+            continue
+        with open(THISDIR / f"{ville.id}_sentiers.json", "wt") as outfh:
+            json.dump(data, outfh, indent=2)
 
 
 def main():

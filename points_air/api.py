@@ -37,7 +37,7 @@ app.add_middleware(
     allow_methods=["GET", "PUT", "POST", "DELETE", "OPTIONS"],
     **middleware_args,
 )
-apiv1 = FastAPI()
+apiv1 = FastAPI(title="Points-Air API")
 app.mount("/api/v1", apiv1)
 
 

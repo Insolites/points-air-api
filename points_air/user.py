@@ -21,7 +21,7 @@ class Utilisateur(BaseModel):
         examples=["David Huggins-Daines"],
     )
     sports: List[Sport] = Field(
-        description="Sports ont pratiqués par cet utilisateur",
+        description="Sports pratiqués par cet utilisateur",
     )
     debut: datetime.datetime = Field(
         default_factory=datetime.datetime.now,
