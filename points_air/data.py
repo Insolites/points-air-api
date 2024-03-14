@@ -115,7 +115,7 @@ async def ville_organization(ville: str) -> Union[Dict, None]:
     return villes["result"][0]
 
 
-async def ville_parcs(ville: Ville) -> Union[str, None]:
+async def ville_parcs(ville: Ville) -> Union[Dict, None]:
     """Trouver le GeoJSON des parcs pour une ville."""
     result = await dq_query(
         "package_search", q=f"(organization:{ville.id} AND title:parcs)"
@@ -129,7 +129,10 @@ async def ville_parcs(ville: Ville) -> Union[str, None]:
     for resource in dataset["resources"]:
         if resource["format"] == "GeoJSON":
             LOGGER.info("GeoJSON trouvé pour %s: %s", dataset["title"], resource["url"])
-            return resource["url"]
+            r = await CLIENT.get(resource["url"])
+            if r.status_code != 200:
+                return None
+            return r.json()
     return None
 
 
@@ -189,14 +192,20 @@ async def async_main(args: argparse.Namespace):
     villes = VilleCollection({ville.id: ville for ville in v if ville is not None})
     with open(THISDIR / "villes.json", "wt") as outfh:
         print(villes.model_dump_json(indent=2), file=outfh)
-    # Obtenir GeoJSON des sentiers pour les villes pour test (temporaire)
-    vs = await asyncio.gather(*(ville_sentiers(v) for v in villes.root.values()))
+    # Obtenir GeoJSON des parcs et sentiers pour les villes pour test (temporaire)
+    sentiers, parcs = await asyncio.gather(
+        asyncio.gather(*(ville_sentiers(v) for v in villes.root.values())),
+        asyncio.gather(*(ville_parcs(v) for v in villes.root.values())),
+    )
     import json
-    for ville, data in zip(villes.root.values(), vs):
+
+    for ville, vsentiers, vparcs in zip(villes.root.values(), sentiers, parcs):
         if ville is None:
             continue
         with open(THISDIR / f"{ville.id}_sentiers.json", "wt") as outfh:
-            json.dump(data, outfh, indent=2)
+            json.dump(vsentiers, outfh, indent=2)
+        with open(THISDIR / f"{ville.id}_parcs.json", "wt") as outfh:
+            json.dump(vparcs, outfh, indent=2)
 
 
 def main():
