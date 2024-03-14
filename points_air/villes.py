@@ -23,6 +23,11 @@ class Ville(BaseModel):
         examples=["ville-de-repentigny"],
     )
     nom: str = Field(description="Nom usuel de cette ville", examples=["Repentigny"])
+    overpass: Union[int, None] = Field(
+        None,
+        description="Référent Overpass pour cette ville (area)",
+        examples=[3607706380],
+    )
     centroide: PointModel = Field(
         description="Centroïde géométrique de cette ville",
         examples=[PointModel(coordinates=(-73.47093577802768, 45.76110925573926))],

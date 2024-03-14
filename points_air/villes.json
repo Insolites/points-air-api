@@ -2,6 +2,7 @@
   "ville-de-rimouski": {
     "id": "ville-de-rimouski",
     "nom": "Rimouski",
+    "overpass": 3608138193,
     "centroide": {
       "type": "Point",
       "coordinates": [
@@ -7417,6 +7418,7 @@
   "ville-de-shawinigan": {
     "id": "ville-de-shawinigan",
     "nom": "Shawinigan",
+    "overpass": 3607711552,
     "centroide": {
       "type": "Point",
       "coordinates": [
@@ -24740,6 +24742,7 @@
   "ville-de-repentigny": {
     "id": "ville-de-repentigny",
     "nom": "Repentigny",
+    "overpass": 3607706380,
     "centroide": {
       "type": "Point",
       "coordinates": [

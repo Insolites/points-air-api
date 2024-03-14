@@ -19,11 +19,24 @@ from pydantic_geojson import (  # type: ignore
 from .plateaux import Plateau
 from .villes import Ville, VilleCollection
 
-CLIENT = AsyncClient()
+CLIENT = AsyncClient(follow_redirects=True)
 LOGGER = logging.getLogger("points-air-data")
 ICHERCHE = "https://geoegl.msp.gouv.qc.ca/apis/icherche"
 DQURL = "https://www.donneesquebec.ca/recherche/api/3/action"
+NOMINATIM = "https://nominatim.openstreetmap.org/search"
 THISDIR = Path(__file__).parent
+
+
+async def nominatim_query(**kwargs) -> Union[Dict, None]:
+    """Lancer une requête sur Nominatim"""
+    # Voudrait utiliser GeoJSON mais pydantic_geojson est inutile (ne
+    # support pas properties) .. faudrait utiliser l'autre geojson_pydantic
+    params = urllib.parse.urlencode({**kwargs, "format": "jsonv2"})
+    url = f"{NOMINATIM}?{params}"
+    r = await CLIENT.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
 
 
 async def icherche_query(action: str, **kwargs) -> Union[FeatureCollectionModel, None]:
@@ -46,7 +59,26 @@ async def dq_query(action: str, **kwargs) -> Union[Dict, None]:
     return r.json()
 
 
+async def ville_overpass(ville: str) -> Union[int, None]:
+    """Obtenir la region Overpass pour une ville"""
+    data = await nominatim_query(city=ville, countrycodes="ca")
+    if data is None or len(data) == 0:
+        return None
+    osm_id = data[0]["osm_id"]
+    osm_type = data[0]["osm_type"]
+    LOGGER.info("OSM %s %d trouvée pour %s", osm_type, osm_id, ville)
+    # Don't care about the rest, iCherche est meilleur
+    if osm_type == "relation":
+        return osm_id + 3600000000
+    elif osm_type == "way":  # FIXME: probablement ne fonctionne pas!
+        return osm_id + 2400000000
+    else:
+        LOGGER.error("OSM type %s inconnu", osm_type)
+        return None
+
+
 async def ville_feature(ville: str) -> Union[FeatureModel, None]:
+    """Obtenir le contour d'une ville en GeoJSON"""
     fc = await icherche_query(
         "geocode",
         type="municipalites",
@@ -54,7 +86,7 @@ async def ville_feature(ville: str) -> Union[FeatureModel, None]:
         limit=1,
         geometry=1,
     )
-    if fc is None:
+    if fc is None or len(fc.features) == 0:
         return None
     LOGGER.info("%s trouvée pour %s", fc.features[0].geometry.type, ville)
     return fc.features[0]
@@ -98,7 +130,7 @@ async def find_plateaux(ville: str):
 
 async def find_ville(nom: str) -> Union[Ville, None]:
     """Obtenir informations pour une ville des API iCherche et DQ."""
-    (org, feature) = await asyncio.gather(ville_organization(nom), ville_feature(nom))
+    (org, overpass, feature) = await asyncio.gather(ville_organization(nom), ville_overpass(nom), ville_feature(nom))
     if org is None:
         LOGGER.error("Aucun organisme trouvé pour %s", nom)
         return None
@@ -111,6 +143,7 @@ async def find_ville(nom: str) -> Union[Ville, None]:
     return Ville(
         id=org["name"],
         nom=nom,
+        overpass=overpass,
         # FIXME: THERE MUST BE A BETTER WAY!
         centroide=PointModel.model_validate_json(shapely.to_geojson(shape.centroid)),
         feature=feature,
