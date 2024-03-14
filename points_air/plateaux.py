@@ -6,13 +6,18 @@ ville.
 """
 
 import logging
-from typing import List, Literal, Union
+from pathlib import Path
+from typing import Dict, List, Literal, Union
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field
-from pydantic_geojson import PointModel, FeatureModel  # type: ignore
+import shapely  # type: ignore
+from pydantic import BaseModel, Field, RootModel
+from pydantic_geojson import FeatureModel, PointModel  # type: ignore
 
 LOGGER = logging.getLogger("points-air-plateaux")
+SHAPES: Dict[UUID, shapely.Geometry] = {}
+PLATEAUX: Dict[str, List["Plateau"]]
+PLATEAUX_UUID: Dict[UUID, "Plateau"]
 
 
 Saison = Literal["Hiver", "TroisSaisons", "QuatreSaisons"]
@@ -45,40 +50,35 @@ class Plateau(BaseModel):
         description="Centroïde géométrique de ce plateau",
         examples=[PointModel(coordinates=(-72.75478338821179, 46.53507358332476))],
     )
-    geometrie: Union[FeatureModel, None] = Field(
-        None, description="Géométrie GeoJSON de ce plateau (Point ou MultiPolygon)"
+    feature: Union[FeatureModel, None] = Field(
+        None, description="Feature GeoJSON de ce plateau"
     )
 
     @classmethod
-    def near_wgs84(self, latitude: float, longitude: float) -> List["Plateau"]:
-        """ """
-        # TODO
-        return [
-            Plateau(
-                nom="Parc de l'Île-Melville",
-                ville="ville-de-shawinigan",
-                saison="QuatreSaisons",
-                sports=["Marche"],
-                centroide=PointModel(
-                    coordinates=(-72.75478338821179, 46.53507358332476)
-                ),
-                geometrie=None,
-            )
-        ]
+    def near_wgs84(self, latitude: float, longitude: float, limit: int = 10) -> List["Plateau"]:
+        """Plateaux a proximité"""
+        p = shapely.Point(longitude, latitude)
+        plateaux = [(shapely.distance(shape, p), uid)
+                    for uid, shape in SHAPES.items()]
+        plateaux.sort()
+        return [PLATEAUX_UUID[uid] for dist, uid in plateaux[:limit]]
 
-    @classmethod
-    def from_ville(self, ville: str) -> List["Plateau"]:
-        """ """
-        # TODO
-        return [
-            Plateau(
-                nom="Parc de l'Île-Melville",
-                ville="ville-de-shawinigan",
-                saison="QuatreSaisons",
-                sports=["Marche"],
-                centroide=PointModel(
-                    coordinates=(-72.75478338821179, 46.53507358332476)
-                ),
-                geometrie=None,
-            )
-        ]
+
+PlateauCollection = RootModel[Dict[str, List[Plateau]]]
+THISDIR = Path(__file__).parent
+with open(THISDIR / "plateaux.json") as infh:
+    data = infh.read()
+    PLATEAUX = PlateauCollection.model_validate_json(data).root
+    PLATEAUX_UUID = {}
+    for v in PLATEAUX.values():
+        for p in v:
+            if p.feature is None:
+                LOGGER.warning(
+                    "feature pour %s ne devrait pas être None dans plateaux.json", p.id
+                )
+                continue
+            # FIXME: THERE MUST BE A BETTER WAY
+            shape = shapely.from_geojson(p.feature.model_dump_json())
+            shapely.prepare(shape)
+            SHAPES[p.id] = shape
+            PLATEAUX_UUID[p.id] = p

@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.config import Config
 
 from .especes import ESPECES, Espece, Observation
-from .plateaux import Plateau
+from .plateaux import PLATEAUX, Plateau
 from .user import Activite, Utilisateur
 from .villes import VILLES, Score, Ville, Palmares
 
@@ -47,12 +47,12 @@ async def home_page(request: Request) -> str:
 
 
 @apiv1.get("/villes", summary="Liste de villes")
-async def villes(geometry: bool = False) -> List[Ville]:
+async def villes(geometrie: bool = False) -> List[Ville]:
     """
     Obtenir la liste de villes de compétition.
     """
     return [
-        v.model_dump(exclude=None if geometry else "feature") for v in VILLES.values()
+        v.model_dump(exclude=None if geometrie else "feature") for v in VILLES.values()
     ]
 
 
@@ -64,20 +64,24 @@ async def ville_wsg84(latitude: float, longitude: float) -> Ville:
     return Ville.from_wgs84(latitude, longitude)
 
 
-@apiv1.get("/plateaux/{ville}", summary="Plateaux par ville")
-async def activ_ville(ville: str) -> List[Plateau]:
-    """
-    Localiser des activités par ville
-    """
-    return Plateau.from_ville(ville)
-
-
 @apiv1.get("/plateaux/{latitude},{longitude}", summary="Plateaux par emplacement")
-async def activ_wgs84(latitude: float, longitude: float) -> List[Plateau]:
+async def activ_wgs84(latitude: float, longitude: float, limit: int = 10, geometrie: bool = False) -> List[Plateau]:
     """
     Localiser des activités par emplacement
     """
-    return Plateau.near_wgs84(latitude, longitude)
+    return [
+        p.model_dump(exclude=None if geometrie else "feature") for p in Plateau.near_wgs84(latitude, longitude, limit)
+    ]
+
+
+@apiv1.get("/plateaux/{ville}", summary="Plateaux par ville")
+async def activ_ville(ville: str, geometrie: bool = False) -> List[Plateau]:
+    """
+    Localiser des activités par ville
+    """
+    return [
+        p.model_dump(exclude=None if geometrie else "feature") for p in PLATEAUX[ville]
+    ]
 
 
 @apiv1.get("/palmares", summary="Palmarès des villes")

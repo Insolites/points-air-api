@@ -3,10 +3,11 @@
 
 import argparse
 import asyncio
+import json
 import logging
 import urllib
 from pathlib import Path
-from typing import Dict, Union
+from typing import Dict, Union, List
 
 import osm2geojson  # type: ignore
 import shapely  # type: ignore
@@ -17,7 +18,7 @@ from pydantic_geojson import (  # type: ignore
     PointModel,
 )
 
-from .plateaux import Plateau
+from .plateaux import Plateau, PlateauCollection
 from .villes import Ville, VilleCollection
 
 CLIENT = AsyncClient()
@@ -155,11 +156,56 @@ out geom;
     return osm2geojson.json2geojson(data)
 
 
-async def find_plateaux(ville: Ville):
+async def find_plateaux(ville: Ville) -> List[Plateau]:
     """Chercher des plateaux d'activité extérieure pour une ville."""
-    (parcs, sentiers) = await asyncio.gather(ville_parcs(ville), ville_sentiers(ville))
-    if parcs is None:
-        LOGGER.warning("Aucun données de parcs trouvé pour %s", ville)
+    with open(THISDIR / f"{ville.id}_sentiers.json", "rt") as infh:
+        fc = FeatureCollectionModel.model_validate_json(infh.read())
+    # NOTE: Could use geopandas
+    sentiers = []
+    for f in fc.features:
+        shape = shapely.geometry.shape(f.geometry.model_dump())
+        shapely.prepare(shape)
+        sentiers.append(shape)
+    LOGGER.info("%s: %d sentiers trouvés", ville.id, len(sentiers))
+    with open(THISDIR / f"{ville.id}_parcs.json", "rt") as infh:
+        # FIXME: Must preserve properties because pydantic_geojson
+        parcs_fc = json.load(infh)
+    parcs = []
+    for f in parcs_fc["features"]:
+        shape = shapely.geometry.shape(f["geometry"])
+        shapely.prepare(shape)
+        parcs.append((shape, f))
+    LOGGER.info("%s: %d parcs trouvés", ville.id, len(parcs))
+    # NOTE: Could use Spatial SQL
+    parcs_sentiers = []
+    for shape, parc in parcs:
+        found = False
+        for s in sentiers:
+            if shape.contains(s):
+                found = True
+                break
+        if found:
+            parcs_sentiers.append((shape, parc))
+    LOGGER.info("%s: %d parcs avec sentiers", ville.id, len(parcs_sentiers))
+    plateaux = []
+    for shape, parc in parcs_sentiers:
+        props = parc["properties"]
+        nom = props.get("NOM", "INCONNU")
+        print(props)
+        if "LONGITUDE" in props:
+            centroide = (props["LONGITUDE"], props["LATITUDE"])
+        else:
+            centroide = (shape.centroid.x, shape.centroid.y)
+        # FIXME: ça urge de remplacer pydantic_geojson qui est mauvais
+        parc["geometry"] = json.loads(shapely.to_geojson(shape))
+        p = Plateau(ville=ville.id,
+                    nom=nom,
+                    saison="QuatreSaisons",
+                    sports=["Marche", "Vélo"],
+                    centroide=PointModel(coordinates=centroide),
+                    feature=parc)
+        plateaux.append(p)
+    return plateaux
 
 
 async def find_ville(nom: str) -> Union[Ville, None]:
@@ -197,8 +243,7 @@ async def async_main(args: argparse.Namespace):
         asyncio.gather(*(ville_sentiers(v) for v in villes.root.values())),
         asyncio.gather(*(ville_parcs(v) for v in villes.root.values())),
     )
-    import json
-
+    vp = {}
     for ville, vsentiers, vparcs in zip(villes.root.values(), sentiers, parcs):
         if ville is None:
             continue
@@ -206,6 +251,10 @@ async def async_main(args: argparse.Namespace):
             json.dump(vsentiers, outfh, indent=2)
         with open(THISDIR / f"{ville.id}_parcs.json", "wt") as outfh:
             json.dump(vparcs, outfh, indent=2)
+        vp[ville.id] = await find_plateaux(ville)
+    plateaux = PlateauCollection(vp)
+    with open(THISDIR / "plateaux.json", "wt") as outfh:
+        print(plateaux.model_dump_json(indent=2), file=outfh)
 
 
 def main():
