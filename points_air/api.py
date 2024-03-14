@@ -5,7 +5,6 @@ from uuid import UUID
 
 from fastapi import FastAPI, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic_geojson import PointModel  # type: ignore
 from starlette.config import Config
 
 from .especes import ESPECES, Espece, Observation
@@ -36,7 +35,7 @@ else:
 app.add_middleware(
     CORSMiddleware,
     allow_methods=["GET", "PUT", "POST", "DELETE", "OPTIONS"],
-    **middleware_args
+    **middleware_args,
 )
 apiv1 = FastAPI()
 app.mount("/api/v1", apiv1)
@@ -89,39 +88,66 @@ async def palmares() -> Palmares:
         with open(DATADIR / "palmares.json", "rt") as infh:
             return Palmares.model_validate_json(infh.read())
     except FileNotFoundError:
-        palmares = Palmares([Score(ville=v, score=0)
-                             for v in VILLES])
+        palmares = Palmares([Score(ville=v, score=0) for v in VILLES])
         with open(DATADIR / "palmares.json", "wt") as outfh:
             print(palmares.model_dump_json(indent=2), file=outfh)
         return palmares
 
 
-@apiv1.get("/contributions")
-async def contributions(user: str, skip: int = 0, limit: int = 10) -> List[Activite]:
+@apiv1.put("/activite", summary="Création/MÀJ activité")
+async def put_activite(activite: Activite) -> Activite:
+    """Creer ou mettre a jour une activite"""
+    # FIXME: Faut clairement de l'authentification, etc!!!
+    acpath = DATADIR / "activites" / f"{activite.id}.json"
+    acpath.parent.mkdir(parents=True, exist_ok=True)
+    with open(acpath, "wt") as outfh:
+        print(activite.model_dump_json(indent=2), file=outfh)
+    LOGGER.info("Creation/MAJ activité: %s dans %s", activite.id, acpath)
+    return activite
+
+
+@apiv1.get("/activites")
+async def activites(user: str) -> List[Activite]:
     """Obtenir les contributions d'un utilisateur"""
-    # TODO
-    return [
-        Activite(
-            user="dhdaines",
-            sport="Course",
-            date="2024-03-12",
-            plateau="FIXME",
-        )
-    ]
+    # FIXME: Faut clairement une vraie DB!!!
+    acts = []
+    for path in (DATADIR / "activites").iterdir():
+        if path.suffix != ".json":
+            continue
+        with open(path, "rt") as infh:
+            act = Activite.model_validate_json(infh.read())
+            if act.user != user:
+                continue
+            acts.append(act)
+    return acts
+
+
+@apiv1.put("/observation", summary="Création/MÀJ observation")
+async def put_observatoin(obs: Observation) -> Observation:
+    """Creer ou mettre a jour une observation"""
+    # FIXME: Faut clairement de l'authentification, etc!!!
+    obpath = DATADIR / "observations" / f"{obs.id}.json"
+    obpath.parent.mkdir(parents=True, exist_ok=True)
+    with open(obpath, "wt") as outfh:
+        print(obs.model_dump_json(indent=2), file=outfh)
+    LOGGER.info("Creation/MAJ observation: %s dans %s", obs.id, obpath)
+    return obs
 
 
 @apiv1.get("/observations")
-async def observations() -> List[Observation]:
+async def observations(user: Union[str, None] = None) -> List[Observation]:
     """Obtenir les observations d'EEE"""
-    # TODO
-    return [
-        Observation(
-            user="dhdaines",
-            date="2024-03-12",
-            code_espece="RENOJ",
-            emplacement=PointModel(coordinates=(45.95781529453835, -74.14215499821823)),
-        )
-    ]
+    # FIXME: Faut clairement une vraie DB!!!
+    obss = []
+    for path in (DATADIR / "observations").iterdir():
+        if path.suffix != ".json":
+            continue
+        with open(path, "rt") as infh:
+            obs = Observation.model_validate_json(infh.read())
+            if user is not None and obs.user != user:
+                continue
+            obss.append(obs)
+    return obss
 
 
 @apiv1.get("/especes")
@@ -145,7 +171,7 @@ async def put_user(
 ) -> Utilisateur:
     """Création d'un utilisateur"""
     # FIXME: Faut clairement de l'authentification, etc!!!
-    userpath = (DATADIR / "users" / f"{user.id}.json")
+    userpath = DATADIR / "users" / f"{user.id}.json"
     userpath.parent.mkdir(parents=True, exist_ok=True)
     with open(userpath, "wt") as outfh:
         print(user.model_dump_json(indent=2), file=outfh)
@@ -156,7 +182,7 @@ async def put_user(
 @apiv1.get("/user/{id}", summary="utilisateur par ID")
 async def get_user(id: UUID) -> Union[Utilisateur, None]:
     """Recherche d'un utilisateur"""
-    userpath = (DATADIR / "users" / f"{id}.json")
+    userpath = DATADIR / "users" / f"{id}.json"
     try:
         with open(userpath, "rt") as infh:
             return Utilisateur.model_validate_json(infh.read())
