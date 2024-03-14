@@ -1,15 +1,21 @@
 import logging
-from typing import Dict, List, Union
+from pathlib import Path
+from typing import Dict, List, Union, Annotated
+from uuid import UUID
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic_geojson import PointModel  # type: ignore
 from starlette.config import Config
 
 from .especes import ESPECES, Espece, Observation
 from .plateaux import Plateau
-from .user import Activite
-from .villes import VILLES, Score, Ville
+from .user import Activite, Utilisateur
+from .villes import VILLES, Score, Ville, Palmares
+
+# FLAT FILES ARE THE FUTURE!!!
+DATADIR = Path("data")
+DATADIR.mkdir(parents=True, exist_ok=True)
 
 LOGGER = logging.getLogger("points-air-api")
 CONFIG = Config()
@@ -36,23 +42,22 @@ apiv1 = FastAPI()
 app.mount("/api/v1", apiv1)
 
 
-@apiv1.get("/")
+@apiv1.get("/", summary="Bonjour!")
 async def home_page(request: Request) -> str:
     return "Bonjour!"
 
 
-@apiv1.get("/villes")
+@apiv1.get("/villes", summary="Liste de villes")
 async def villes(geometry: bool = False) -> List[Ville]:
     """
     Obtenir la liste de villes de compétition.
     """
     return [
-        v.model_dump(exclude=None if geometry else "feature")
-        for v in VILLES.values()
+        v.model_dump(exclude=None if geometry else "feature") for v in VILLES.values()
     ]
 
 
-@apiv1.get("/ville/{latitude},{longitude}")
+@apiv1.get("/ville/{latitude},{longitude}", summary="Ville par emplacement")
 async def ville_wsg84(latitude: float, longitude: float) -> Ville:
     """
     Localiser un emplacement dans une des villes de compétition.
@@ -60,7 +65,7 @@ async def ville_wsg84(latitude: float, longitude: float) -> Ville:
     return Ville.from_wgs84(latitude, longitude)
 
 
-@apiv1.get("/plateaux/{ville}")
+@apiv1.get("/plateaux/{ville}", summary="Plateaux par ville")
 async def activ_ville(ville: str) -> List[Plateau]:
     """
     Localiser des activités par ville
@@ -68,7 +73,7 @@ async def activ_ville(ville: str) -> List[Plateau]:
     return Plateau.from_ville(ville)
 
 
-@apiv1.get("/plateaux/{latitude},{longitude}")
+@apiv1.get("/plateaux/{latitude},{longitude}", summary="Plateaux par emplacement")
 async def activ_wgs84(latitude: float, longitude: float) -> List[Plateau]:
     """
     Localiser des activités par emplacement
@@ -76,15 +81,19 @@ async def activ_wgs84(latitude: float, longitude: float) -> List[Plateau]:
     return Plateau.near_wgs84(latitude, longitude)
 
 
-@apiv1.get("/palmares")
-async def palmares() -> List[Score]:
+@apiv1.get("/palmares", summary="Palmarès des villes")
+async def palmares() -> Palmares:
     """Obtenir les palmares des villes"""
-    # TODO
-    return [
-        Score(ville="ville-de-rimouski", score=123),
-        Score(ville="ville-de-shawinigan", score=99),
-        Score(ville="ville-de-repentigny", score=49),
-    ]
+    # FIXME: Faut clairement du locking ici!!!
+    try:
+        with open(DATADIR / "palmares.json", "rt") as infh:
+            return Palmares.model_validate_json(infh.read())
+    except FileNotFoundError:
+        palmares = Palmares([Score(ville=v, score=0)
+                             for v in VILLES])
+        with open(DATADIR / "palmares.json", "wt") as outfh:
+            print(palmares.model_dump_json(indent=2), file=outfh)
+        return palmares
 
 
 @apiv1.get("/contributions")
@@ -93,7 +102,6 @@ async def contributions(user: str, skip: int = 0, limit: int = 10) -> List[Activ
     # TODO
     return [
         Activite(
-            id="FIXME",
             user="dhdaines",
             sport="Course",
             date="2024-03-12",
@@ -120,3 +128,37 @@ async def observations() -> List[Observation]:
 async def especes() -> List[Espece]:
     """Obtenir la liste d'EEE"""
     return ESPECES
+
+
+@apiv1.put("/user", summary="Création ou MÀJ utilisateur")
+async def put_user(
+    user: Annotated[
+        Utilisateur,
+        Body(
+            example={
+                "nom": "foobie",
+                "nom_complet": "Foobie McBletch",
+                "sports": ["Marche"],
+            }
+        ),
+    ]
+) -> Utilisateur:
+    """Création d'un utilisateur"""
+    # FIXME: Faut clairement de l'authentification, etc!!!
+    userpath = (DATADIR / "users" / f"{user.id}.json")
+    userpath.parent.mkdir(parents=True, exist_ok=True)
+    with open(userpath, "wt") as outfh:
+        print(user.model_dump_json(indent=2), file=outfh)
+    LOGGER.info("Creation/MAJ utilisateur: %s dans %s", user, userpath)
+    return user
+
+
+@apiv1.get("/user/{id}", summary="utilisateur par ID")
+async def get_user(id: UUID) -> Union[Utilisateur, None]:
+    """Recherche d'un utilisateur"""
+    userpath = (DATADIR / "users" / f"{id}.json")
+    try:
+        with open(userpath, "rt") as infh:
+            return Utilisateur.model_validate_json(infh.read())
+    except FileNotFoundError:
+        return None

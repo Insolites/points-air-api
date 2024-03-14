@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Dict, Union
+from typing import Dict, Union, List
 
 import shapely  # type: ignore
 from pydantic import BaseModel, RootModel, Field
@@ -47,6 +47,8 @@ class Score(BaseModel):
     )
     score: int = Field(description="Score d'activité physique", examples=[42])
 
+
+Palmares = RootModel[List[Score]]
 
 THISDIR = Path(__file__).parent
 VilleCollection = RootModel[Dict[str, Ville]]

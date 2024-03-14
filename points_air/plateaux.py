@@ -58,10 +58,11 @@ class Plateau(BaseModel):
                 nom="Parc de l'Île-Melville",
                 ville="ville-de-shawinigan",
                 saison="QuatreSaisons",
-                sports=["Marche", "Course"],
+                sports=["Marche"],
                 centroide=PointModel(
                     coordinates=(-72.75478338821179, 46.53507358332476)
                 ),
+                geometrie=None,
             )
         ]
 
@@ -74,9 +75,10 @@ class Plateau(BaseModel):
                 nom="Parc de l'Île-Melville",
                 ville="ville-de-shawinigan",
                 saison="QuatreSaisons",
-                sports=["Marche", "Course"],
+                sports=["Marche"],
                 centroide=PointModel(
                     coordinates=(-72.75478338821179, 46.53507358332476)
                 ),
+                geometrie=None,
             )
         ]
