@@ -1,6 +1,7 @@
 import csv
 import datetime
 from pathlib import Path
+from uuid import UUID
 
 from pydantic import BaseModel
 from pydantic_geojson import PointModel  # type: ignore
@@ -15,7 +16,7 @@ CATEGORIES = {
 
 
 class Observation(BaseModel):
-    user: str
+    user: UUID
     date: datetime.datetime
     code_espece: str
     emplacement: PointModel

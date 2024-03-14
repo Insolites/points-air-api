@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Dict, Union
 
 import shapely  # type: ignore
-from pydantic import BaseModel, RootModel
+from pydantic import BaseModel, RootModel, Field
 from pydantic_geojson import FeatureModel, PointModel  # type: ignore
 
 LOGGER = logging.getLogger("points-air-villes")
@@ -18,14 +18,19 @@ class Ville(BaseModel):
     Une ville de compétition.
     """
 
-    id: str
-    """Identifieur pour cette ville (nom d'organisme dans l'api DQ)"""
-    nom: str
-    """Nom usuel de cette ville"""
-    centroide: PointModel
-    """Centroïde géométrique de cette ville"""
-    feature: Union[FeatureModel, None] = None
-    """Feature GeoJSON de cette ville (fort probablement une MultiPolygon)"""
+    id: str = Field(
+        description="Identifieur pour cette ville (nom d'organisme dans l'api DQ)",
+        examples=["ville-de-repentigny"],
+    )
+    nom: str = Field(description="Nom usuel de cette ville", examples=["Repentigny"])
+    centroide: PointModel = Field(
+        description="Centroïde géométrique de cette ville",
+        examples=[PointModel(coordinates=(-73.47093577802768, 45.76110925573926))],
+    )
+    feature: Union[FeatureModel, None] = Field(
+        None,
+        description="Feature GeoJSON de cette ville (fort probablement une MultiPolygon)",
+    )
 
     @classmethod
     def from_wgs84(self, latitude: float, longitude: float) -> Union["Ville", None]:
@@ -37,10 +42,10 @@ class Ville(BaseModel):
 
 
 class Score(BaseModel):
-    ville: str
-    """Identificateur d'une ville"""
-    score: int
-    """Score d'activité physique"""
+    ville: str = Field(
+        description="Identificateur d'une ville", examples=["ville-de-repentigny"]
+    )
+    score: int = Field(description="Score d'activité physique", examples=[42])
 
 
 THISDIR = Path(__file__).parent
