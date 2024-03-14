@@ -6,11 +6,10 @@ import asyncio
 import logging
 import urllib
 from pathlib import Path
-from typing import AsyncIterator, Dict, Union
+from typing import Dict, Union
 
 import shapely  # type: ignore
 from httpx import AsyncClient
-from pydantic import RootModel
 from pydantic_geojson import (  # type: ignore
     FeatureCollectionModel,
     FeatureModel,
@@ -61,17 +60,17 @@ async def ville_feature(ville: str) -> Union[FeatureModel, None]:
     return fc.features[0]
 
 
-async def ville_organization(ville: str) -> Union[str, None]:
+async def ville_organization(ville: str) -> Union[Dict, None]:
     """Trouver le nom d'organisme pour une ville"""
     villes = await dq_query("organization_autocomplete", q=ville)
     if villes is None:
         return None
     for org in villes["result"]:
         if "ville" in org["name"]:
-            return org["name"]
+            return org
         elif "municipal" in org["name"]:
-            return org["name"]
-    return villes["result"][0]["name"]
+            return org
+    return villes["result"][0]
 
 
 async def ville_parcs(org: str) -> Union[str, None]:
@@ -90,28 +89,27 @@ async def ville_parcs(org: str) -> Union[str, None]:
     return None
 
 
-async def find_plateaux(ville: Ville):
+async def find_plateaux(ville: str):
     """Chercher des plateaux d'activité extérieure pour une ville."""
-    parcs = await ville_parcs(ville.id)
+    parcs = await ville_parcs(ville)
     if parcs is None:
-        LOGGER.warning("Aucun données de parcs trouvé pour %s", ville.id)
+        LOGGER.warning("Aucun données de parcs trouvé pour %s", ville)
 
 
 async def find_ville(nom: str) -> Union[Ville, None]:
     """Obtenir informations pour une ville des API iCherche et DQ."""
-    (org, feature) = await asyncio.gather(ville_organization(nom),
-                                          ville_feature(nom))
+    (org, feature) = await asyncio.gather(ville_organization(nom), ville_feature(nom))
     if org is None:
         LOGGER.error("Aucun organisme trouvé pour %s", nom)
         return None
     if feature is None:
         LOGGER.error("Aucune géométrie trouvé pour %s", nom)
         return None
-    LOGGER.info("Ville trouvée pour %s: %s", nom, org)
+    LOGGER.info("Ville trouvée pour %s: %s", nom, org["name"])
     shape = shapely.geometry.shape(feature.geometry.model_dump())
     LOGGER.info("Centroïde de %s: %s", nom, shape.centroid)
     return Ville(
-        id=org,
+        id=org["name"],
         nom=nom,
         # FIXME: THERE MUST BE A BETTER WAY!
         centroide=PointModel.model_validate_json(shapely.to_geojson(shape.centroid)),
@@ -123,7 +121,8 @@ async def async_main(args: argparse.Namespace):
     """Fonction principale async."""
     v = await asyncio.gather(*(find_ville(nom) for nom in args.villes))
     villes = VilleCollection({ville.id: ville for ville in v if ville is not None})
-    print(villes.model_dump_json(indent=2))
+    with open(THISDIR / "villes.json", "wt") as outfh:
+        print(villes.model_dump_json(indent=2), file=outfh)
 
 
 def main():
