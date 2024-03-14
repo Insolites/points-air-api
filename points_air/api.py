@@ -1,16 +1,16 @@
 import logging
 from pathlib import Path
-from typing import Dict, List, Union, Annotated
+from typing import Annotated, Dict, List, Tuple, Union
 from uuid import UUID
 
-from fastapi import FastAPI, Request, Body
+from fastapi import Body, FastAPI, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.config import Config
 
 from .especes import ESPECES, Espece, Observation
 from .plateaux import PLATEAUX, Plateau
 from .user import Activite, Utilisateur
-from .villes import VILLES, Score, Ville, Palmares
+from .villes import VILLES, Palmares, Score, Ville
 
 # FLAT FILES ARE THE FUTURE!!!
 DATADIR = Path("data")
@@ -47,7 +47,11 @@ async def home_page(request: Request) -> str:
 
 
 @apiv1.get("/villes", summary="Liste de villes")
-async def villes(geometrie: bool = False) -> List[Ville]:
+async def villes(
+    geometrie: Annotated[
+        bool, Query(description="Retourner perimètre en GeoJSON")
+    ] = False
+) -> List[Ville]:
     """
     Obtenir la liste de villes de compétition.
     """
@@ -57,20 +61,51 @@ async def villes(geometrie: bool = False) -> List[Ville]:
 
 
 @apiv1.get("/ville/{latitude},{longitude}", summary="Ville par emplacement")
-async def ville_wsg84(latitude: float, longitude: float) -> Ville:
+async def ville_wsg84(
+    latitude: float,
+    longitude: float,
+    geometrie: Annotated[
+        bool, Query(description="Retourner perimètre en GeoJSON")
+    ] = False,
+) -> Union[Ville, None]:
     """
     Localiser un emplacement dans une des villes de compétition.
     """
-    return Ville.from_wgs84(latitude, longitude)
+    ville = Ville.from_wgs84(latitude, longitude)
+    if ville is None:
+        return None
+    if geometrie:
+        return ville
+    else:
+        return ville.model_dump(exclude="feature")
+
+
+@apiv1.get("/ville/{id}", summary="Ville par identificateur")
+async def ville_id(id: str, geometrie: bool = False) -> Ville:
+    """
+    Obtenir les informations pour une ville de compétition.
+    """
+    return VILLES[id].model_dump(exclude=None if geometrie else "feature")
 
 
 @apiv1.get("/plateaux/{latitude},{longitude}", summary="Plateaux par emplacement")
-async def activ_wgs84(latitude: float, longitude: float, limit: int = 10, geometrie: bool = False) -> List[Plateau]:
+async def activ_wgs84(
+    latitude: float,
+    longitude: float,
+    proximite: Annotated[float, Query(description="Distance maximale en km")] = 10,
+    limit: Annotated[
+        int, Query(description="Nombre maximal de plateaux à retourner")
+    ] = 10,
+    geometrie: Annotated[
+        bool, Query(description="Retourner perimètre en GeoJSON")
+    ] = False,
+) -> List[Tuple[float, Plateau]]:
     """
     Localiser des activités par emplacement
     """
     return [
-        p.model_dump(exclude=None if geometrie else "feature") for p in Plateau.near_wgs84(latitude, longitude, limit)
+        (dist, p.model_dump(exclude=None if geometrie else "feature"))
+        for dist, p in Plateau.near_wgs84(latitude, longitude, proximite, limit)
     ]
 
 
@@ -127,7 +162,7 @@ async def activites(user: str) -> List[Activite]:
 
 
 @apiv1.put("/observation", summary="Création/MÀJ observation")
-async def put_observatoin(obs: Observation) -> Observation:
+async def put_observation(obs: Observation) -> Observation:
     """Creer ou mettre a jour une observation"""
     # FIXME: Faut clairement de l'authentification, etc!!!
     obpath = DATADIR / "observations" / f"{obs.id}.json"

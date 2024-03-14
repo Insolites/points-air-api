@@ -7,14 +7,16 @@ ville.
 
 import logging
 from pathlib import Path
-from typing import Dict, List, Literal, Union
+from typing import Dict, List, Literal, Tuple, Union
 from uuid import UUID, uuid4
 
+import pyproj
 import shapely  # type: ignore
 from pydantic import BaseModel, Field, RootModel
 from pydantic_geojson import FeatureModel, PointModel  # type: ignore
 
 LOGGER = logging.getLogger("points-air-plateaux")
+WGS84 = pyproj.Geod(ellps="WGS84")
 SHAPES: Dict[UUID, shapely.Geometry] = {}
 PLATEAUX: Dict[str, List["Plateau"]]
 PLATEAUX_UUID: Dict[UUID, "Plateau"]
@@ -55,13 +57,25 @@ class Plateau(BaseModel):
     )
 
     @classmethod
-    def near_wgs84(self, latitude: float, longitude: float, limit: int = 10) -> List["Plateau"]:
-        """Plateaux a proximité"""
-        p = shapely.Point(longitude, latitude)
-        plateaux = [(shapely.distance(shape, p), uid)
-                    for uid, shape in SHAPES.items()]
+    def near_wgs84(
+        self, latitude: float, longitude: float, proximite: float = 10, limit: int = 10
+    ) -> List[Tuple[float, "Plateau"]]:
+        """Plateaux a proximité et distances"""
+        # FIXME: Pourrait vraiment utiliser Spatial SQL ;-)
+        ns = len(SHAPES)
+        _, _, distances = WGS84.inv(
+            [longitude] * ns,
+            [latitude] * ns,
+            [shape.centroid.x for shape in SHAPES.values()],
+            [shape.centroid.y for shape in SHAPES.values()],
+        )
+        plateaux = list(zip(distances, SHAPES.keys()))
         plateaux.sort()
-        return [PLATEAUX_UUID[uid] for dist, uid in plateaux[:limit]]
+        return [
+            (dist, PLATEAUX_UUID[uid])
+            for dist, uid in plateaux[:limit]
+            if dist < proximite * 1000
+        ]
 
 
 PlateauCollection = RootModel[Dict[str, List[Plateau]]]
