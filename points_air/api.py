@@ -249,8 +249,8 @@ async def put_user(
     return user
 
 
-@apiv1.get("/user/{id}", summary="utilisateur par ID")
-async def get_user(id: UUID) -> Union[Utilisateur, None]:
+@apiv1.get("/userid/{id}", summary="utilisateur par ID")
+async def get_user_id(id: UUID) -> Union[Utilisateur, None]:
     """Recherche d'un utilisateur"""
     userpath = DATADIR / "users" / f"{id}.json"
     try:
@@ -258,3 +258,16 @@ async def get_user(id: UUID) -> Union[Utilisateur, None]:
             return Utilisateur.model_validate_json(infh.read())
     except FileNotFoundError:
         return None
+
+
+@apiv1.get("/user/{nom}", summary="utilisateur par nom")
+async def get_user_nom(nom: str) -> Union[Utilisateur, None]:
+    """Recherche d'un utilisateur"""
+    for path in (DATADIR / "users").iterdir():
+        if path.suffix != ".json":
+            continue
+        with open(path, "rt") as infh:
+            user = Utilisateur.model_validate_json(infh.read())
+            if user.nom == nom:
+                return user
+    return None
