@@ -129,6 +129,25 @@ async def plateau_par_ville(
     ]
 
 
+@apiv1.get("/plateau/{id}", summary="Plateau par identificateur")
+async def plateau_par_id(
+    id: UUID,
+    geometrie: Annotated[
+        bool, Query(description="Retourner perimètre en GeoJSON")
+    ] = False,
+) -> Union[Plateau, None]:
+    """
+    Localiser des activités par ville
+    """
+    plateau = Plateau.from_uuid(id)
+    if plateau is None:
+        return None
+    elif geometrie:
+        return plateau
+    else:
+        return plateau.model_dump(exclude="feature")
+
+
 @apiv1.get("/palmares", summary="Palmarès des villes")
 async def palmares() -> Palmares:
     """Obtenir les palmares des villes"""

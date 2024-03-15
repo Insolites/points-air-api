@@ -23,7 +23,7 @@ def test_villes():
 
 
 def test_crud():
-    response = client.get("/plateaux/45.768380,-73.431657?limit=1&proximite=1000")
+    response = client.get("/plateaux/45.768380,-73.431657?limite=1&proximite=1000")
     assert response.status_code == 200
     plateaux = response.json()
     assert len(plateaux) == 1
