@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Annotated, Dict, List, Tuple, Union
 from uuid import UUID
 
-from fastapi import Body, FastAPI, Request, Query
+from fastapi import Body, FastAPI, Request, Query, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.config import Config
 
@@ -237,7 +237,8 @@ async def put_user(
                 "sports": ["Marche"],
             }
         ),
-    ]
+    ],
+    status_code: int = status.HTTP_201_CREATED,
 ) -> Utilisateur:
     """Création d'un utilisateur"""
     # FIXME: Faut clairement de l'authentification, etc!!!
@@ -250,18 +251,19 @@ async def put_user(
 
 
 @apiv1.get("/userid/{id}", summary="utilisateur par ID")
-async def get_user_id(id: UUID) -> Union[Utilisateur, None]:
+async def get_user_id(id: UUID, response: Response) -> Union[Utilisateur, None]:
     """Recherche d'un utilisateur"""
     userpath = DATADIR / "users" / f"{id}.json"
     try:
         with open(userpath, "rt") as infh:
             return Utilisateur.model_validate_json(infh.read())
     except FileNotFoundError:
+        response.status_code = status.HTTP_404_NOT_FOUND
         return None
 
 
 @apiv1.get("/user/{nom}", summary="utilisateur par nom")
-async def get_user_nom(nom: str) -> Union[Utilisateur, None]:
+async def get_user_nom(nom: str, response: Response) -> Union[Utilisateur, None]:
     """Recherche d'un utilisateur"""
     for path in (DATADIR / "users").iterdir():
         if path.suffix != ".json":
@@ -270,4 +272,5 @@ async def get_user_nom(nom: str) -> Union[Utilisateur, None]:
             user = Utilisateur.model_validate_json(infh.read())
             if user.nom == nom:
                 return user
+    response.status_code = status.HTTP_404_NOT_FOUND
     return None
