@@ -98,7 +98,7 @@ async def activ_wgs84(
     latitude: float,
     longitude: float,
     proximite: Annotated[float, Query(description="Distance maximale en km")] = 10,
-    limit: Annotated[
+    limite: Annotated[
         int, Query(description="Nombre maximal de plateaux à retourner")
     ] = 10,
     geometrie: Annotated[
@@ -110,12 +110,17 @@ async def activ_wgs84(
     """
     return [
         (dist, p.model_dump(exclude=None if geometrie else "feature"))
-        for dist, p in Plateau.near_wgs84(latitude, longitude, proximite, limit)
+        for dist, p in Plateau.near_wgs84(latitude, longitude, proximite, limite)
     ]
 
 
 @apiv1.get("/plateaux/{ville}", summary="Plateaux par ville")
-async def activ_ville(ville: str, geometrie: bool = False) -> List[Plateau]:
+async def plateau_par_ville(
+    ville: str,
+    geometrie: Annotated[
+        bool, Query(description="Retourner perimètre en GeoJSON")
+    ] = False,
+) -> List[Plateau]:
     """
     Localiser des activités par ville
     """
