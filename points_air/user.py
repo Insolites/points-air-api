@@ -41,7 +41,9 @@ class Activite(BaseModel):
     sport: List[Sport] = Field(
         description="Quels sports ont été pratiqués lors de cette activité"
     )
-    date: datetime.datetime = Field(description="Date de début de l'activité")
+    date: datetime.datetime = Field(
+        default_factory=datetime.datetime.now, description="Date de début de l'activité"
+    )
     confirme: bool = Field(False, description="L'activité est-elle confirmée?")
     plateau: UUID = Field(
         description="Identificateur du plateau d'activité où l'activité a eu lieu"

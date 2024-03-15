@@ -77,6 +77,10 @@ class Plateau(BaseModel):
             if dist < proximite * 1000
         ]
 
+    @classmethod
+    def from_uuid(self, uid: UUID) -> Union["Plateau", None]:
+        return PLATEAUX_UUID.get(uid)
+
 
 PlateauCollection = RootModel[Dict[str, List[Plateau]]]
 THISDIR = Path(__file__).parent

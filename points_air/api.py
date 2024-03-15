@@ -127,15 +127,17 @@ async def activ_ville(ville: str, geometrie: bool = False) -> List[Plateau]:
 @apiv1.get("/palmares", summary="Palmarès des villes")
 async def palmares() -> Palmares:
     """Obtenir les palmares des villes"""
-    # FIXME: Faut clairement du locking ici!!!
-    try:
-        with open(DATADIR / "palmares.json", "rt") as infh:
-            return Palmares.model_validate_json(infh.read())
-    except FileNotFoundError:
-        palmares = Palmares([Score(ville=v, score=0) for v in VILLES])
-        with open(DATADIR / "palmares.json", "wt") as outfh:
-            print(palmares.model_dump_json(indent=2), file=outfh)
-        return palmares
+    scores: Dict[str, int] = {ville: 0 for ville in VILLES}
+    # FIXME: Faut clairement une vraie DB!!!
+    for path in (DATADIR / "activites").iterdir():
+        if path.suffix != ".json":
+            continue
+        with open(path, "rt") as infh:
+            act = Activite.model_validate_json(infh.read())
+            p = Plateau.from_uuid(act.plateau)
+            if p is not None:
+                scores[p.ville] += 1
+    return Palmares([Score(ville=k, score=v) for k, v in scores.items()])
 
 
 @apiv1.put("/activite", summary="Création/MÀJ activité")
@@ -151,7 +153,7 @@ async def put_activite(activite: Activite) -> Activite:
 
 
 @apiv1.get("/activites")
-async def activites(user: str) -> List[Activite]:
+async def activites(user: UUID) -> List[Activite]:
     """Obtenir les contributions d'un utilisateur"""
     # FIXME: Faut clairement une vraie DB!!!
     acts = []
